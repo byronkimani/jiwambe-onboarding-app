@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#123E31" />
+<title>Jiwambe Onboarding — Prototype hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --pine: #1D5C4A;
+    --pine-deep: #123E31;
+    --mint: #4ED99B;
+    --paper: #F3F2EC;
+    --ink: #15181A;
+    --ink-soft: #4A524D;
+    --line: #E3E1D6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "DM Sans", "Segoe UI", system-ui, sans-serif;
+    color: var(--ink);
+    background:
+      radial-gradient(120% 80% at 50% -10%, #1D5C4A 0%, #123E31 55%),
+      #123E31;
+  }
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 48px 22px 64px;
+  }
+  h1 {
+    font-family: "DM Serif Display", Georgia, serif;
+    font-size: clamp(2rem, 5vw, 2.75rem);
+    font-weight: 400;
+    color: #fff;
+    margin: 0 0 10px;
+    line-height: 1.15;
+  }
+  .lead {
+    color: rgba(255,255,255,0.72);
+    font-size: 15px;
+    line-height: 1.55;
+    max-width: 48ch;
+    margin: 0 0 28px;
+  }
+  .note {
+    color: rgba(255,255,255,0.55);
+    font-size: 12.5px;
+    line-height: 1.5;
+    margin: 0 0 22px;
+  }
+  .note code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11.5px;
+    color: var(--mint);
+  }
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 12px;
+  }
+  a.card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    background: var(--paper);
+    border-radius: 18px;
+    padding: 18px 18px 16px;
+    border: 1px solid rgba(255,255,255,0.08);
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  a.card:hover { transform: translateY(-1px); box-shadow: 0 10px 28px rgba(0,0,0,0.18); }
+  a.card h2 {
+    margin: 0 0 6px;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--pine-deep);
+  }
+  a.card p {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    line-height: 1.45;
+  }
+  a.card .meta {
+    margin-top: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+    color: var(--pine);
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Jiwambe Onboarding — Field tablet prototypes</h1>
+  <p class="lead">Split by officer journey so agents can open one flow without loading the full SPA.</p>
+  <p class="note">Shared UI in <code>js/shared.js</code>. Seeds and constants in <code>js/data.js</code>. Serve this folder statically (<code>python3 -m http.server 8080</code>).</p>
+  <ul>
+    <li>
+      <a class="card" href="auth.html">
+        <h2>Auth</h2>
+        <p>Contractor email login and OTP. Continues to the desk after verify.</p>
+        <div class="meta">auth.html · js/auth-app.js</div>
+      </a>
+    </li>
+    <li>
+      <a class="card" href="capture.html">
+        <h2>Capture wizard</h2>
+        <p>Ten-stage application capture with step rail. Deep link: <code>?stage=identity</code>.</p>
+        <div class="meta">capture.html · js/capture-app.js</div>
+      </a>
+    </li>
+    <li>
+      <a class="card" href="desk.html?app=A-1042">
+        <h2>Officer desk</h2>
+        <p>Worklist board, agreement, release, and summary. Open <code>?app=A-1042</code> for agreement demo.</p>
+        <div class="meta">desk.html · js/desk-app.js</div>
+      </a>
+    </li>
+    <li>
+      <a class="card" href="prototype.html">
+        <h2>Full app</h2>
+        <p>End-to-end routing: auth → desk → capture → post-ops flows.</p>
+        <div class="meta">prototype.html · js/app.js</div>
+      </a>
+    </li>
+  </ul>
+</main>
+</body>
+</html>

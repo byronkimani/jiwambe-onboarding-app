@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [sandbox, main, "feature/**"]
+  pull_request:
+    branches: [sandbox]
+
+env:
+  NEXTAUTH_SECRET: ci-placeholder-secret-min-32-chars-long
+  NEXTAUTH_URL: http://127.0.0.1:3100
+  JIWAMBE_API_BASE_URL: http://127.0.0.1:18080/api/v1
+  MOCK_JIWAMBE_API: "1"
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test --run
+
+      - name: Build
+        run: pnpm build
+
+      - name: Install Playwright
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: E2E suite
+        env:
+          E2E: "1"
+        run: pnpm test:e2e

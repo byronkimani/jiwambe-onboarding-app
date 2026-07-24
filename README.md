@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Jiwambe Onboarding
 
-## Getting Started
+Tablet-first [Next.js](https://nextjs.org) PWA for **onboarding agents** at Jiwambe offices and partner dealerships: in-person KYC, capture, deposit, agreement, and bike handover. After release, riders use **jiwambe-rider-app** for servicing.
 
-First, run the development server:
+The browser talks only to this app’s BFF under `/api/onboarding/*` (see [`src/lib/global/shared/routes.ts`](src/lib/global/shared/routes.ts)).
+
+**Specs:** [`docs/overview.md`](docs/overview.md) · [`docs/implementation-plan.md`](docs/implementation-plan.md) · [`docs/implementation-status.md`](docs/implementation-status.md)
+
+**Contributing / agent rules:** [`AGENTS.md`](AGENTS.md) · **Architecture:** [`ARCHITECTURE.md`](ARCHITECTURE.md)
+
+## Prerequisites
+
+- **Node.js** ≥ 24
+- **pnpm** ≥ 11.13 (`packageManager` in `package.json`)
+
+## Quick start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
+cp .env.local.example .env.local
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). With `MOCK_JIWAMBE_API=1` (default in the example), outbound API calls use [MSW](https://mswjs.io/) when handlers are added.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**UX reference:** [`docs/prototype/`](docs/prototype/) (serve statically for full field-tablet flows).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Environment variables
 
-## Learn More
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `JIWAMBE_API_BASE_URL` | Deploy | Upstream root **including** `/api/v1` — **server only** |
+| `MOCK_JIWAMBE_API` | Local/CI | Set `1` to enable MSW |
+| `NEXTAUTH_SECRET` | Phase 3+ | Session signing |
+| `NEXTAUTH_URL` | Phase 3+ | App origin |
+| `E2E` | Playwright only | `1` for E2E — **never** in production |
 
-To learn more about Next.js, take a look at the following resources:
+## Scripts
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+pnpm dev
+pnpm build
+pnpm lint
+pnpm typecheck
+pnpm test --run
+pnpm test:e2e
+pnpm test:all
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Stack
 
-## Deploy on Vercel
+Next.js 16 · React 19 · Tailwind CSS 4 · shadcn/ui · Vitest · Playwright · MSW · Auth.js (Phase 3)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## License
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Private — Jiwambe.
