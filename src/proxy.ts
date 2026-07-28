@@ -1,6 +1,5 @@
+import { auth } from "@/auth";
 import { NextResponse } from "next/server";
-import NextAuth from "next-auth";
-import { authConfig } from "@/auth.config";
 import {
   AppRoutes,
   isCapturePath,
@@ -8,8 +7,6 @@ import {
   isPublicApiOnboardingPath,
 } from "@/lib/global/shared/routes";
 import { sanitizeCallbackUrl } from "@/lib/global/shared/sanitize-callback-url";
-
-const { auth } = NextAuth(authConfig);
 
 function isProtectedAppPath(pathname: string): boolean {
   return isDeskPath(pathname) || isCapturePath(pathname);

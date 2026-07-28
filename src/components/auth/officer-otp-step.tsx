@@ -1,112 +1,141 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import {
-  DEMO_OTP_CODE,
-  DEMO_OTP_PHONE_MASK,
-} from "@/lib/global/auth/demo-credentials";
-import { signInWithOtpAction } from "@/lib/global/auth/sign-in-officer-action";
+import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { AppRoutes } from "@/lib/global/shared/routes";
-import { sanitizeCallbackUrl } from "@/lib/global/shared/sanitize-callback-url";
-import { AuthScreenLayout } from "@/components/auth/auth-screen-layout";
-import { ProtoBtn, ProtoField } from "@/components/onboarding/atoms/proto-field";
-import { cn } from "@/lib/utils";
 
 type Props = {
-  email: string;
-  password: string;
-  code: string;
-  onCodeChange: (value: string) => void;
+  maskedPhone: string;
+  otpSessionId: string;
+  initialResendAvailableInSeconds: number;
+  submitting?: boolean;
+  error?: string | null;
   onBack: () => void;
-  sessionExpired?: boolean;
+  onVerify: (code: string) => void | Promise<void>;
 };
 
 export function OfficerOtpStep({
-  email,
-  password,
-  code,
-  onCodeChange,
+  maskedPhone,
+  otpSessionId,
+  initialResendAvailableInSeconds,
+  submitting = false,
+  error,
   onBack,
-  sessionExpired,
+  onVerify,
 }: Props) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const ok = code === DEMO_OTP_CODE;
+  const [code, setCode] = useState("");
+  const [resendSeconds, setResendSeconds] = useState(
+    initialResendAvailableInSeconds,
+  );
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const [resendError, setResendError] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
 
-  function handleVerify() {
-    if (!ok || pending) return;
-    setError(null);
-    startTransition(async () => {
-      const result = await signInWithOtpAction(email, password, code);
-      if (!result.ok) {
-        setError("Could not sign in. Check your code and try again.");
-        return;
-      }
-      const callback = sanitizeCallbackUrl(
-        searchParams.get("callbackUrl"),
-        AppRoutes.desk,
-      );
-      router.push(callback);
-      router.refresh();
+  useEffect(() => {
+    if (resendSeconds <= 0) return;
+    const timer = window.setInterval(() => {
+      setResendSeconds((s) => (s <= 1 ? 0 : s - 1));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [resendSeconds]);
+
+  const handleResend = useCallback(async () => {
+    if (resendSeconds > 0 || resending) return;
+    setResending(true);
+    setResendError(null);
+    setResendMessage(null);
+
+    const response = await fetch(AppRoutes.apiOnboardingAuthOtpResend, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ otp_session_id: otpSessionId }),
     });
-  }
+
+    const data = (await response.json().catch(() => ({}))) as {
+      message?: string;
+      resend_available_in_seconds?: number;
+    };
+
+    setResending(false);
+
+    if (!response.ok) {
+      setResendError(
+        data.message ?? "Could not resend the code. Try again or go back.",
+      );
+      return;
+    }
+
+    setResendMessage(data.message ?? "We sent a new code by SMS.");
+    setResendSeconds(data.resend_available_in_seconds ?? 60);
+  }, [otpSessionId, resendSeconds, resending]);
 
   return (
-    <AuthScreenLayout>
+    <div>
       <button
         type="button"
-        className="mb-3.5 cursor-pointer border-none bg-transparent p-0 text-[13.5px] font-bold text-accent-deep"
+        className="mb-3 text-[13.5px] font-bold text-accent-deep"
         onClick={onBack}
-        disabled={pending}
       >
         ← Back
       </button>
-
-      <h1 className="font-display text-[22px] font-normal text-ink">
-        One more step
-      </h1>
-      <p className="mb-5 mt-1.5 text-[13.5px] leading-relaxed text-ink-soft">
+      <h1 className="font-display text-[22px] text-ink">One more step</h1>
+      <p className="mt-1.5 mb-5 text-[13.5px] leading-relaxed text-ink-soft">
         We sent a 6-digit code by SMS to the registered phone for this account —{" "}
-        <b>{DEMO_OTP_PHONE_MASK}</b>.
+        <b>{maskedPhone}</b>.
       </p>
-
-      {sessionExpired ? (
-        <p className="mb-3 text-sm font-semibold text-amber" role="alert">
-          Session expired. Sign in again.
-        </p>
-      ) : null}
-      {error ? (
-        <p className="mb-3 text-sm font-semibold text-red" role="alert">
-          {error}
-        </p>
-      ) : null}
-
-      <ProtoField label="Verification code" hint={`Demo: ${DEMO_OTP_CODE}`}>
-        <input
+      <div>
+        <Label htmlFor="otp" className="text-ink-soft">
+          Verification code
+        </Label>
+        <Input
+          id="otp"
           inputMode="numeric"
           maxLength={6}
           placeholder="······"
+          className="mt-2 border-line bg-white text-center font-mono text-[22px] font-bold tracking-[0.35em]"
           value={code}
-          onChange={(e) =>
-            onCodeChange(e.target.value.replace(/\D/g, "").slice(0, 6))
-          }
-          disabled={pending}
-          className={cn(
-            "jw-tap w-full rounded-[10px] border-[1.5px] border-line bg-card px-3.5 py-3 text-center font-mono text-[22px] font-bold tracking-[9px] text-ink outline-none focus:border-accent focus:ring-[3px] focus:ring-accent-soft",
-          )}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
         />
-      </ProtoField>
-
-      <ProtoBtn
-        className="w-full"
-        disabled={!ok || pending}
-        onClick={handleVerify}
+      </div>
+      {error ? (
+        <p className="mt-3 text-[13px] font-semibold text-red-600" role="alert">
+          {error}
+        </p>
+      ) : null}
+      {resendMessage ? (
+        <p className="mt-3 text-[13px] text-accent-deep" role="status">
+          {resendMessage}
+        </p>
+      ) : null}
+      {resendError ? (
+        <p className="mt-3 text-[13px] font-semibold text-red-600" role="alert">
+          {resendError}
+        </p>
+      ) : null}
+      <Button
+        type="button"
+        className="mt-6 h-auto w-full rounded-xl py-3.5 font-bold"
+        disabled={code.length !== 6 || submitting}
+        onClick={() => void onVerify(code)}
       >
-        {pending ? "Signing in…" : "Verify & sign in"}
-      </ProtoBtn>
-    </AuthScreenLayout>
+        {submitting ? "Verifying…" : "Verify & sign in"}
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        className="mt-3 h-auto w-full rounded-xl py-3.5 font-bold"
+        disabled={resendSeconds > 0 || resending}
+        onClick={() => void handleResend()}
+      >
+        {resending
+          ? "Sending…"
+          : resendSeconds > 0
+            ? `Resend code in ${resendSeconds}s`
+            : "Resend code"}
+      </Button>
+    </div>
   );
 }

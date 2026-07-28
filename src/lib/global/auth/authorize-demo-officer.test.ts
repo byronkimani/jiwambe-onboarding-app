@@ -6,7 +6,7 @@ describe("buildDemoOfficerAuthUser", () => {
   it("returns seeded officer with mock tokens", () => {
     const user = buildDemoOfficerAuthUser(DEMO_AGENT_EMAIL);
     expect(user.email).toBe(DEMO_AGENT_EMAIL);
-    expect(user.name).toBe("Jane Ochieng");
+    expect(user.name).toBe("John");
     expect(user.backendAccessToken).toMatch(/^mock_onboarding_access_/);
   });
 });

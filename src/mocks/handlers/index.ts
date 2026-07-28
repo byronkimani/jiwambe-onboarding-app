@@ -1,7 +1,7 @@
 import { onboardingApplicationsHandlers } from "@/mocks/handlers/onboarding-applications";
-import { onboardingAuthHandlers } from "@/mocks/handlers/onboarding-auth";
+import { onboardingOfficerAuthHandlers } from "@/mocks/handlers/onboarding-officer-auth";
 
 export const handlers = [
-  ...onboardingAuthHandlers,
+  ...onboardingOfficerAuthHandlers,
   ...onboardingApplicationsHandlers,
 ] as const;

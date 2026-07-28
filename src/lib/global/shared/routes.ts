@@ -19,6 +19,9 @@ export type CaptureStageKey = (typeof CAPTURE_STAGE_KEYS)[number];
 
 export const AppRoutes = {
   home: "/",
+  activate: "/activate",
+  forgotPassword: "/forgot-password",
+  resetPassword: "/reset-password",
   offline: "/offline",
   accountBlocked: "/account-blocked",
   desk: "/desk",
@@ -28,6 +31,14 @@ export const AppRoutes = {
   capture: "/capture",
   apiAuth: "/api/auth",
   apiOnboardingHealth: "/api/onboarding/health",
+  apiOnboardingAuthLogin: "/api/onboarding/auth/login",
+  apiOnboardingAuthOtpResend: "/api/onboarding/auth/otp/resend",
+  apiOnboardingAuthActivate: "/api/onboarding/auth/activate",
+  apiOnboardingAuthActivatePassword: "/api/onboarding/auth/activate/password",
+  apiOnboardingAuthPasswordForgot: "/api/onboarding/auth/password/forgot",
+  apiOnboardingAuthPasswordReset: "/api/onboarding/auth/password/reset",
+  apiOnboardingAuthPasswordResetPassword:
+    "/api/onboarding/auth/password/reset/password",
   apiOnboardingLogout: "/api/onboarding/logout",
   apiOnboardingApplications: "/api/onboarding/applications",
   apiOnboardingApplicationsCurrent: "/api/onboarding/applications/current",
@@ -36,6 +47,7 @@ export const AppRoutes = {
   apiOnboardingInventory: "/api/onboarding/inventory",
   apiOnboardingDepositStk: "/api/onboarding/deposits/stk",
   apiOnboardingDepositValidate: "/api/onboarding/deposits/validate",
+  apiOnboardingE2eResetMocks: "/api/onboarding/e2e/reset-mocks",
 } as const;
 
 export type AppRoute = (typeof AppRoutes)[keyof typeof AppRoutes];
@@ -90,12 +102,23 @@ export function apiOnboardingApplicationReleaseOtp(id: string): string {
 
 export const PUBLIC_PATHS = [
   AppRoutes.home,
+  AppRoutes.activate,
+  AppRoutes.forgotPassword,
+  AppRoutes.resetPassword,
   AppRoutes.offline,
   AppRoutes.accountBlocked,
 ] as const;
 
 export const PUBLIC_API_ONBOARDING_PATHS = [
   AppRoutes.apiOnboardingHealth,
+  AppRoutes.apiOnboardingAuthLogin,
+  AppRoutes.apiOnboardingAuthOtpResend,
+  AppRoutes.apiOnboardingAuthActivate,
+  AppRoutes.apiOnboardingAuthActivatePassword,
+  AppRoutes.apiOnboardingAuthPasswordForgot,
+  AppRoutes.apiOnboardingAuthPasswordReset,
+  AppRoutes.apiOnboardingAuthPasswordResetPassword,
+  AppRoutes.apiOnboardingE2eResetMocks,
 ] as const;
 
 export const DESK_PATH_PREFIX = "/desk" as const;

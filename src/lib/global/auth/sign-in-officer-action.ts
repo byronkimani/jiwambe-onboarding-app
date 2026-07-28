@@ -2,53 +2,50 @@
 
 import { AuthError } from "next-auth";
 import { signIn } from "@/auth";
+import { normalizeEmail } from "@/lib/global/auth/normalize-email";
+import { extractOtpVerifyDetailsFromUnknown } from "@/lib/global/auth/otp-verify-error";
 import {
-  DEMO_OTP_CODE,
-  isValidOfficerEmail,
-  isValidOfficerPassword,
-} from "@/lib/global/auth/demo-credentials";
-
-export type SignInOfficerResult =
-  | { ok: true }
-  | {
-      ok: false;
-      error: "invalid_email" | "invalid_credentials" | "invalid_otp" | "unknown";
-    };
+  OTP_SIGN_IN_UNKNOWN_FAILURE,
+  otpSignInFailureFromDetails,
+  type OtpSignInResult,
+} from "@/lib/global/auth/sign-in-otp-result";
 
 export async function signInWithOtpAction(
   email: string,
-  password: string,
-  otp: string,
-): Promise<SignInOfficerResult> {
-  if (!isValidOfficerEmail(email)) {
-    return { ok: false, error: "invalid_email" };
-  }
-
-  if (!isValidOfficerPassword(password)) {
-    return { ok: false, error: "invalid_credentials" };
-  }
-
-  if (otp !== DEMO_OTP_CODE) {
-    return { ok: false, error: "invalid_otp" };
-  }
+  otpSessionId: string,
+  code: string,
+): Promise<OtpSignInResult> {
+  const normalizedEmail = normalizeEmail(email);
 
   try {
-    const result = await signIn("officer-email-otp", {
-      email: email.trim().toLowerCase(),
-      password,
-      otp,
+    const result = await signIn("officer-otp", {
+      email: normalizedEmail,
+      otpSessionId,
+      code,
       redirect: false,
     });
 
     if (result?.error) {
-      return { ok: false, error: "unknown" };
+      const details =
+        extractOtpVerifyDetailsFromUnknown(result) ??
+        extractOtpVerifyDetailsFromUnknown(new Error(result.error));
+      if (details) {
+        return otpSignInFailureFromDetails(details);
+      }
+      return OTP_SIGN_IN_UNKNOWN_FAILURE;
     }
 
     return { ok: true };
   } catch (error) {
-    if (error instanceof AuthError) {
-      return { ok: false, error: "unknown" };
+    const details = extractOtpVerifyDetailsFromUnknown(error);
+    if (details) {
+      return otpSignInFailureFromDetails(details);
     }
+
+    if (error instanceof AuthError) {
+      return OTP_SIGN_IN_UNKNOWN_FAILURE;
+    }
+
     throw error;
   }
 }

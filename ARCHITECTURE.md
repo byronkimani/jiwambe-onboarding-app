@@ -12,16 +12,21 @@ Browser (PWA on tablet)
   → JIWAMBE_API_BASE_URL (onboarding paths per API contract)
 ```
 
-## Auth (Phase 3+)
+## Auth
 
-- **Phone + password** for onboarding agents (not rider phone-OTP)
-- **Auth.js v5**, JWT session, upstream tokens server-side only
-- Token refresh **only** in the Auth.js `jwt` callback
+- **Email + password**, then **SMS OTP** for onboarding agents (see [`docs/prototype/js/auth.js`](docs/prototype/js/auth.js))
+- **BFF:** `POST /api/onboarding/auth/login`, `otp/resend`, `activate`, `activate/password` → upstream `/onboarding/auth/*`
+- **CRM activation:** one-time URL token; **httpOnly** activation session cookie; no tokens in JSON responses
+- **OTP sign-in:** upstream verify inside Auth.js `authorize()` only (no handoff cookie; no public otp/verify BFF)
+- Distinct from **rider** phone OTP in [`docs/field-rider-api-contract.md`](docs/field-rider-api-contract.md)
+- **Auth.js v5**, JWT holds upstream tokens; refresh **only** in `jwt` callback via `POST /onboarding/auth/refresh`
+- **Authenticated upstream calls:** `Authorization: Bearer` via [`upstreamRequest()`](src/lib/global/shared/upstream-request.ts)
+- **429 / OTP retries:** upstream `message` (and optional `retries_remaining`) forwarded by BFF
 - Route gate: [`src/proxy.ts`](src/proxy.ts)
 - Edge-safe rules in [`src/auth.config.ts`](src/auth.config.ts)
 
-**Public paths:** `/`, `/offline`, `/account-blocked`, `/api/auth/*`, `GET /api/onboarding/health`  
-**Protected:** `/desk`, `/desk/*`, `/capture`, `/capture/*`, authenticated BFF (gate enforced Phase 3+)
+**Public paths:** `/`, `/activate`, `/offline`, `/account-blocked`, `/api/auth/*`, public `GET/POST /api/onboarding/auth/*`, `GET /api/onboarding/health`  
+**Protected:** `/desk`, `/desk/*`, `/capture`, `/capture/*`, other authenticated BFF
 
 ## Agent flows (target)
 
