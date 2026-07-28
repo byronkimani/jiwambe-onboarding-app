@@ -1,15 +1,8 @@
-import { ShellPlaceholder } from "@/components/layout/shell-placeholder";
+import { ReleaseFlowClient } from "@/components/onboarding/flows/release-flow-client";
 
-type Props = {
-  params: Promise<{ id: string }>;
-};
+type Props = { params: Promise<{ id: string }> };
 
 export default async function DeskApplicationReleasePage({ params }: Props) {
   const { id } = await params;
-  return (
-    <ShellPlaceholder
-      title="Bike handover"
-      description={`Release and customer OTP for application ${id}.`}
-    />
-  );
+  return <ReleaseFlowClient id={id} />;
 }

@@ -2,18 +2,32 @@
 
 **Status:** Active catalog  
 **Prototype:** [`prototype/`](prototype/) (split HTML + `js/*`)  
-**Last updated:** 2026-07-24
+**Last updated:** 2026-07-28
 
 Items below must be resolved or explicitly accepted before calling a phase **Done** in production code.
 
 ---
 
-## Auth and identity
+## Screen matrix (prototype → Next.js)
+
+| Prototype (`js/*`) | Next.js component / route | Status |
+|--------------------|---------------------------|--------|
+| `LoginScreen`, `OtpScreen` | [`officer-login-step.tsx`](../src/components/auth/officer-login-step.tsx), [`officer-otp-step.tsx`](../src/components/auth/officer-otp-step.tsx) | **Done** |
+| `ProfileView` | [`profile-sheet.tsx`](../src/components/onboarding/chrome/profile-sheet.tsx), [`/desk/profile`](../src/app/desk/profile/page.tsx) | **Done** |
+| `Worklist`, `AppFolder` | [`desk-worklist-screen.tsx`](../src/components/onboarding/desk/desk-worklist-screen.tsx), [`application-folder-card.tsx`](../src/components/onboarding/desk/application-folder-card.tsx) | **Done** |
+| `HistoryScreen`, `DraftsScreen` | `desk-worklist-screen` modes | **Done** |
+| `AgreementFlow` | [`agreement-flow.tsx`](../src/components/onboarding/flows/agreement-flow.tsx) | **Done** (demo steps) |
+| `ReleaseFlow` | [`release-flow.tsx`](../src/components/onboarding/flows/release-flow.tsx) | **Done** (demo steps) |
+| `SummaryFlow` | [`summary-flow.tsx`](../src/components/onboarding/flows/summary-flow.tsx) | **Done** |
+| `ReadinessScreen` … `ReviewScreen` | [`capture-stage-body.tsx`](../src/components/onboarding/capture/stages/capture-stage-body.tsx) | **Done** (demo UI; not 1:1 LOC split) |
+| `TopBar`, `NotifPanel`, `StepRail`, `StageShell` | [`top-bar.tsx`](../src/components/onboarding/chrome/top-bar.tsx), [`notif-panel.tsx`](../src/components/onboarding/chrome/notif-panel.tsx), capture chrome | **Done** |
+
+---
 
 | Gap | Prototype | Production target |
 |-----|-----------|-------------------|
-| Login identifier | Email + OTP in [`js/auth.js`](prototype/js/auth.js) | **Phone + password** per [`overview.md`](overview.md) |
-| Agent directory | Hard-coded “Jane Ochieng” | API-backed officer profile and dealership |
+| Login identifier | Email + OTP in [`js/auth.js`](prototype/js/auth.js) | **Closed in Next.js UI** — email + OTP screens; MSW demo OTP `123456` |
+| Agent directory | Hard-coded “Jane Ochieng” | API-backed officer profile and dealership — **partial** (seed + session email) |
 
 ---
 
@@ -53,8 +67,8 @@ Items below must be resolved or explicitly accepted before calling a phase **Don
 
 | Gap | Notes |
 |-----|--------|
-| Next.js routes | `src/app` still has **rider PWA** shells (`/owner/*`, `/apply`) — **Phase 2** replaces with `/desk`, `/capture/*` |
-| API namespace | BFF uses `/api/onboarding/*`; align handlers with API contract as endpoints ship |
+| Next.js routes | `/desk`, `/capture/*` shipped — **closed** |
+| Product quotes in capture | Pre-seeded `GET /api/onboarding/catalog/quotes` — not live catalog API |
 | [`portal-migration.md`](portal-migration.md) | Documents **rider app**, not onboarding — do not use for this product |
 
 ---
@@ -65,7 +79,8 @@ Items below must be resolved or explicitly accepted before calling a phase **Don
 |------|----------|
 | Kiswahili | **Deferred** — English-only v1 |
 | Tablet Playwright viewport | Mobile 390×844 in CI today; optional wider viewport in Phase 4 |
-| PWA install prompts | Follow agents-app pattern when desk ships |
+| PWA install prompts | **Partial** — install sheet + offline redirect in app; full parity with rider TBD |
+| Pixel parity (desk/capture/flows) | **Open** — desk worklist + kraft folders aligned to `desk.js`; capture/flows still thin |
 
 ---
 

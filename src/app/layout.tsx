@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { DM_Sans, DM_Serif_Display } from "next/font/google";
+import { AppProviders } from "@/components/providers/app-providers";
+import { ClientPwaShell } from "@/components/pwa/client-pwa-shell";
+import { isE2eMode } from "@/lib/global/shared/env";
 import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -59,10 +62,13 @@ export default function RootLayout({
       lang="en"
       className={`${dmSans.variable} ${dmSerif.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-[#D9DDD9] text-ink">
-        <div className="mx-auto flex min-h-full w-full max-w-[960px] flex-col bg-background shadow-[0_0_44px_rgba(0,0,0,0.16)]">
-          {children}
+      <body className="flex min-h-dvh flex-col bg-[#D9DDD9] text-ink">
+        <div className="mx-auto flex min-h-dvh w-full max-w-[960px] flex-1 flex-col bg-background shadow-[0_0_44px_rgba(0,0,0,0.16)]">
+          <AppProviders>
+            {children}
+          </AppProviders>
         </div>
+        <ClientPwaShell showInstallPrompt={!isE2eMode()} />
         <Toaster />
         <ServiceWorkerRegistration />
       </body>

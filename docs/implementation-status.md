@@ -1,11 +1,11 @@
 # Implementation status — Jiwambe Onboarding
 
-**Last updated:** 2026-07-24  
+**Last updated:** 2026-07-28  
 **Repository:** `jiwambe-onboarding-app`  
 **Overview:** [`overview.md`](overview.md)  
 **Plan:** [`implementation-plan.md`](implementation-plan.md)
 
-Legend: **Shipped** | **Shell** | **Legacy** | **Planned** | **Deferred**
+Legend: **Shipped** | **Demo UI** | **Planned** | **Deferred**
 
 ---
 
@@ -16,43 +16,48 @@ Legend: **Shipped** | **Shell** | **Legacy** | **Planned** | **Deferred**
 | 0 | Documentation and product SSOT | **Shipped** |
 | 1 | Repository bootstrap | **Shipped** |
 | 2 | Route realignment | **Shipped** |
-| 3–11 | See [`implementation-plan.md`](implementation-plan.md) | **Planned** |
+| 3 | Agent auth (email + OTP) | **Demo UI** (prototype parity + MSW + Auth.js; upstream refresh TBD) |
+| 4 | Tablet chrome | **Demo UI** (StepRail, NotifPanel dropdown, profile route, PWA install shell) |
+| 5 | Desk worklist | **Demo UI** (kanban + kraft folders; `[id]` redirects to flow) |
+| 6–8 | Capture wizard | **Demo UI** (`capture-stage-body` per-stage prototype UI) |
+| 9 | Agreement and release | **Demo UI** (viewer, PDI, OTP, summary timeline) |
+| 10–11 | API integration, hardening | **Planned** |
 
 ---
 
-## Repository and bootstrap
+## Auth
 
-| Item | Status | Notes |
-|------|--------|-------|
-| Product overview + implementation plan | **Shipped** | 2026-07-24 |
-| Prototype split (`docs/prototype/`) | **Shipped** | auth / capture / desk / full |
-| CI (lint, typecheck, test, build, e2e) | **Shipped** | `.github/workflows/ci.yml` |
-| `pnpm audit` clean | **Shipped** | Next 16.2.11, sharp override |
-| Vercel preview | **Planned** | After first deploy to `sandbox` |
+| Surface | Status | Notes |
+|---------|--------|-------|
+| Email + OTP login | **Demo UI** | Prototype `auth.js` on `/` |
+| Route gate (`proxy.ts`) | **Shipped** | Protects `/desk`, `/capture`, BFF |
+| Demo officer | **Shipped** | Email `jane.ochieng@contractor.jiwambe.com`, password 8+ chars, OTP `123456` |
 
 ---
 
 ## Routes (Next.js `src/app`)
 
-| Route | UI | Notes |
-|-------|-----|-------|
-| `/`, `/offline`, `/account-blocked` | **Shell** | Public |
-| `/desk`, `/desk/history`, `/desk/drafts` | **Shell** | Desk layout + nav |
-| `/desk/applications/[id]` (+ agreement, release, summary) | **Shell** | Application sub-flows |
-| `/capture`, `/capture/[stage]` | **Shell** | Redirect + 10 stages |
+| Route | UI | Data |
+|-------|-----|------|
+| `/` | **Demo UI** | Login |
+| `/desk`, `/desk/history`, `/desk/drafts`, `/desk/profile` | **Demo UI** | `GET /api/onboarding/applications` |
+| `/desk/applications/[id]` | **Shipped** | Redirect to primary flow route |
+| `/desk/applications/[id]/agreement` … `release`, `summary` | **Demo UI** | Fixture flows |
+| `/capture/[stage]` | **Demo UI** | Client wizard + quote BFF stub |
+| `/offline`, `/account-blocked`, `not-found` | **Demo UI** | Rider-style offline; agent support contacts |
 | `GET /api/onboarding/health` | **Shipped** | `{ ok: true }` |
+| `GET /api/onboarding/catalog/quotes` | **Demo UI** | Pre-seeded quote table |
 
 ---
 
 ## Features
 
-| Feature | Status |
-|---------|--------|
-| UX prototype in repo | **Shipped** | Field tablet HTML |
-| Agent auth (phone + password) | **Planned** | Phase 3 |
-| Desk worklist | **Planned** | Phase 5 |
-| Capture wizard | **Planned** | Phases 6–8 |
-| Agreement and release | **Planned** | Phase 9 |
-| Offline sync | **Planned** | Phase 10 |
-| Backend API wire-up | **Planned** | Phase 10 — contract TBD |
+| Feature | Status | Notes |
+|---------|--------|-------|
+| UX prototype in repo | **Shipped** | `docs/prototype/` |
+| MSW onboarding auth | **Shipped** | `POST /onboarding/agents/auth/login` |
+| Real upstream API | **Planned** | Replace MSW when contract lands |
+| File upload / OCR / face | **Planned** | UI placeholders only |
+| Offline sync queue | **Planned** | TopBar online toggle + queued badge stub |
+| PWA install prompt | **Demo UI** | `beforeinstallprompt` sheet + dismiss storage |
 | Kiswahili | **Deferred** | English-only v1 |

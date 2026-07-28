@@ -46,7 +46,7 @@ Quick lookup for contributors and agents. Update when shipping features.
 
 | Route | Purpose |
 |-------|---------|
-| `/` | Agent login (phone + password) |
+| `/` | Agent login (email + password + OTP) |
 | `/desk` | Worklist |
 | `/desk/history` | Completed applications |
 | `/desk/drafts` | Paused / draft applications |

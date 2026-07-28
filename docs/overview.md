@@ -52,7 +52,7 @@ Agents refer prospects; marketing can drive self-serve interest. Onboarding agen
 
 | User | Role in this app |
 |------|------------------|
-| **Onboarding agent** | Logs in (phone + password); runs capture wizard; manages worklist; agreement and release ceremonies |
+| **Onboarding agent** | Logs in (email + password + OTP); runs capture wizard; manages worklist; agreement and release ceremonies |
 | **Rider (customer)** | Present in person; provides documents; signs on tablet; confirms handover via **SMS OTP** at release — does **not** use this app for ongoing servicing |
 
 ---
@@ -77,14 +77,16 @@ Internal capture draft (`DRAFT` / in-wizard) is not shown on the public board un
 
 ## 5. Authentication and session (Phase 3+)
 
-**Target (v1):** **Phone number + password** for onboarding agents.
+**UX (v1):** Matches [`prototype/js/auth.js`](prototype/js/auth.js) — **email + password**, then **SMS OTP** on the registered phone.
 
+- Step 1: email and password (minimum 8 characters) → **Continue**
+- Step 2: 6-digit verification code → **Verify & sign in**
 - Session: Auth.js v5 JWT; upstream tokens **server-side only**
 - Token refresh **only** in the Auth.js `jwt` callback
 - Post-login landing: **desk / worklist** (`/desk`)
 - Sign out: BFF revokes upstream session, clears cookie
 
-**Prototype gap:** [`prototype/js/auth.js`](prototype/js/auth.js) shows **email + OTP** — replace with phone + password when implementing ([`prototype-gaps.md`](prototype-gaps.md)).
+**Local demo (MSW):** any valid email and 8+ character password reach the OTP step; code **`123456`** completes sign-in as the seeded officer. Upstream MSW login still uses the demo agent phone internally until the API contract supports email + OTP end-to-end.
 
 ---
 
@@ -186,7 +188,7 @@ Implemented as shells in Phase 2 (see [`implementation-plan.md`](implementation-
 
 | Route | Purpose |
 |-------|---------|
-| `/` | Agent login (phone + password) |
+| `/` | Agent login (email + password + OTP) |
 | `/desk` | Worklist (board / list) |
 | `/desk/history` | Completed applications |
 | `/desk/drafts` | Paused / draft applications |

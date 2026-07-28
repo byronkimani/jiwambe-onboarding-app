@@ -1,10 +1,12 @@
-import { ShellPlaceholder } from "@/components/layout/shell-placeholder";
+import { DeskWorklistScreen } from "@/components/onboarding/desk/desk-worklist-screen";
+import { getOnboardingSession } from "@/lib/global/auth/require-onboarding-session";
+import { getSeedApplications } from "@/lib/onboarding/fixtures/seed-applications";
 
-export default function DeskPage() {
+export default async function DeskPage() {
+  const session = await getOnboardingSession();
+  const initialApplications = session ? getSeedApplications() : undefined;
+
   return (
-    <ShellPlaceholder
-      title="Desk queue"
-      description="Today's applications, handovers, and quick actions. Matches docs/prototype desk slice."
-    />
+    <DeskWorklistScreen mode="queue" initialApplications={initialApplications} />
   );
 }
