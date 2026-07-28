@@ -1,10 +1,9 @@
-import { ShellPlaceholder } from "@/components/layout/shell-placeholder";
+import { AccountBlockedScreen } from "@/components/auth/account-blocked-screen";
 
 export default function AccountBlockedPage() {
   return (
-    <ShellPlaceholder
-      title="Couldn't sign you in"
-      description="Unified blocked-account screen — contact support copy from prototype."
-    />
+    <div className="flex min-h-dvh flex-1 flex-col">
+      <AccountBlockedScreen />
+    </div>
   );
 }

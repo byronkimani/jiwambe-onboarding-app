@@ -22,7 +22,7 @@
 - [ ] `pnpm lint` — zero errors/warnings
 - [ ] `pnpm typecheck` — clean
 - [ ] `pnpm test --run` — all unit tests pass
-- [ ] Playwright smoke for changed surfaces (`E2E=1`; default viewport **390×844**; add tablet project in Phase 4 if needed)
+- [ ] Playwright smoke for changed surfaces (`E2E=1`; primary **tablet 1024×768** project; mobile 390×844 smoke in `playwright.config.ts`)
 - [ ] No `fetch(JIWAMBE_API_BASE_URL)` in `"use client"` files
 - [ ] [`implementation-status.md`](implementation-status.md) updated for shipped surfaces
 - [ ] Phase row in **Phase progress** table updated
@@ -36,14 +36,8 @@
 |-------|------|--------|
 | **0** | Documentation and product SSOT | **Done** |
 | **1** | Repository bootstrap (infra) | **Done** |
-| **2** | Route realignment (remove rider shells) | Planned |
-| **3** | Agent auth (phone + password) | Planned |
-| **4** | Tablet chrome (TopBar, offline, sync) | Planned |
-| **5** | Desk — worklist, history, drafts | Planned |
-| **6** | Capture — readiness and lookup | Planned |
-| **7** | Capture — identity, DL, COGC, references | Planned |
-| **8** | Capture — model, product, deposit, bike, review | Planned |
-| **9** | Post-ops — agreement and release | Planned |
+| **2** | Route realignment (remove rider shells) | **Done** |
+| **3–9** | UI-first demo (auth, chrome, desk, capture, flows) | **Done** (demo / MSW) |
 | **10** | Offline sync and API integration | Planned |
 | **11** | Hardening and production readiness | Planned |
 
@@ -78,7 +72,7 @@ Browser (PWA on tablet)
   → JIWAMBE_API_BASE_URL (paths TBD)
 ```
 
-**Auth (Phase 3):** Auth.js v5 — phone + password Credentials (upstream TBD).
+**Auth (Phase 3):** Auth.js v5 — email + password + OTP (prototype `auth.js`; upstream TBD).
 
 **MSW:** `MOCK_JIWAMBE_API=1` from Phase 1 instrumentation.
 
@@ -154,16 +148,16 @@ Next.js 16, React 19, TypeScript strict, Tailwind 4, shadcn/ui, Vitest, Playwrig
 
 ---
 
-## Phase 3 — Agent auth (phone + password)
+## Phase 3 — Agent auth (email + OTP)
 
 **Goal:** Onboarding agents sign in; session gates protected routes.
 
 **Deliverables:**
 
-- Auth.js Credentials (phone + password) + BFF login route (upstream TBD)
+- Auth.js Credentials (email + password + OTP) + BFF login route (upstream TBD)
 - `auth.ts`, `/api/auth/*`, `proxy.ts` wired with `auth.config.ts`
 - MSW agent persona(s)
-- Login UI per prototype tone; **phone** fields (not prototype email)
+- Login UI per [`prototype/js/auth.js`](prototype/js/auth.js) (centered card, OTP step)
 
 **Tests:** Auth route tests; E2E login → `/desk`.
 

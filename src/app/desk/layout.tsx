@@ -1,30 +1,24 @@
-import Link from "next/link";
-import { AppRoutes } from "@/lib/global/shared/routes";
+import { auth } from "@/auth";
+import { OnboardingChromeProvider } from "@/components/onboarding/onboarding-chrome-context";
+import { getDefaultOfficer } from "@/lib/onboarding/fixtures/seed-officer";
 
-export default function DeskLayout({
+export default async function DeskLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth();
+  const officer = getDefaultOfficer();
+  if (session?.user?.name) {
+    officer.name = session.user.name;
+  }
+  if (session?.user?.email) {
+    officer.email = session.user.email;
+  }
+
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-background">
-      <header className="flex items-center justify-between border-b border-line bg-card px-4 py-3">
-        <span className="text-sm font-extrabold tracking-wide text-accent-deep">
-          JIWAMBE
-        </span>
-        <nav className="flex gap-2 text-xs font-bold text-ink-soft">
-          <Link className="hover:text-accent-deep" href={AppRoutes.desk}>
-            Queue
-          </Link>
-          <Link className="hover:text-accent-deep" href={AppRoutes.deskHistory}>
-            History
-          </Link>
-          <Link className="hover:text-accent-deep" href={AppRoutes.deskDrafts}>
-            Drafts
-          </Link>
-        </nav>
-      </header>
-      <main className="flex flex-1 flex-col">{children}</main>
-    </div>
+    <OnboardingChromeProvider officer={officer}>
+      <div className="flex min-h-dvh flex-1 flex-col">{children}</div>
+    </OnboardingChromeProvider>
   );
 }

@@ -28,4 +28,4 @@ pnpm test:e2e
 
 ## Token refresh
 
-When Auth.js ships (Phase 2), refresh happens **only** in the `jwt` callback. `upstreamRequest()` attaches the current token and never refreshes.
+Refresh happens **only** in the Auth.js `jwt` callback when upstream refresh is wired. `upstreamRequest()` (when added) attaches the current token and never refreshes.

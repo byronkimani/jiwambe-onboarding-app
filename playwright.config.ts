@@ -14,12 +14,21 @@ export default defineConfig({
   use: {
     baseURL,
     trace: "on-first-retry",
-    viewport: { width: 390, height: 844 },
   },
   projects: [
     {
+      name: "tablet",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1024, height: 768 },
+      },
+    },
+    {
       name: "mobile-chrome",
-      use: { ...devices["Pixel 5"] },
+      use: {
+        ...devices["Pixel 5"],
+        viewport: { width: 390, height: 844 },
+      },
     },
   ],
   webServer: {

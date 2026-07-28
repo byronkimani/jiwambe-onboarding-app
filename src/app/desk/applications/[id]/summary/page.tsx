@@ -1,15 +1,8 @@
-import { ShellPlaceholder } from "@/components/layout/shell-placeholder";
+import { SummaryFlowClient } from "@/components/onboarding/flows/summary-flow-client";
 
-type Props = {
-  params: Promise<{ id: string }>;
-};
+type Props = { params: Promise<{ id: string }> };
 
 export default async function DeskApplicationSummaryPage({ params }: Props) {
   const { id } = await params;
-  return (
-    <ShellPlaceholder
-      title="Application summary"
-      description={`Read-only summary for application ${id}.`}
-    />
-  );
+  return <SummaryFlowClient id={id} />;
 }

@@ -23,7 +23,19 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000). With `MOCK_JIWAMBE_API=1` (default in the example), outbound API calls use [MSW](https://mswjs.io/) when handlers are added.
 
+**Demo sign-in:** any valid email and password (8+ characters) → OTP **`123456`** → desk. Example email: `jane.ochieng@contractor.jiwambe.com`, password: `demopass1`.
+
 **UX reference:** [`docs/prototype/`](docs/prototype/) (serve statically for full field-tablet flows).
+
+### Compare to prototype
+
+Side-by-side UI check (tablet **1024×768**):
+
+1. Open [`docs/prototype/prototype.html`](docs/prototype/prototype.html) in a browser (or `npx serve docs/prototype`).
+2. Run `pnpm dev` and sign in with the demo OTP above.
+3. Match desk kraft folders, agreement/release flows, and capture stages against the prototype modules in [`docs/prototype/js/`](docs/prototype/js/).
+
+E2E uses the **tablet** Playwright project first (`playwright.config.ts`); mobile is a secondary smoke viewport.
 
 ## Environment variables
 

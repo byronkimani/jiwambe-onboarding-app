@@ -24,6 +24,7 @@ export const AppRoutes = {
   desk: "/desk",
   deskHistory: "/desk/history",
   deskDrafts: "/desk/drafts",
+  deskProfile: "/desk/profile",
   capture: "/capture",
   apiAuth: "/api/auth",
   apiOnboardingHealth: "/api/onboarding/health",
