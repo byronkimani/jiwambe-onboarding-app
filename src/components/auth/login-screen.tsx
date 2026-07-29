@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { signOut } from "next-auth/react";
+import { useEffect, useState } from "react";
 import { AuthScreenLayout } from "@/components/auth/auth-screen-layout";
 import { OfficerLoginStep } from "@/components/auth/officer-login-step";
 import { OfficerOtpStep } from "@/components/auth/officer-otp-step";
 import { AppRoutes } from "@/lib/global/shared/routes";
-import { useRouter } from "next/navigation";
 import { signInWithOtpAction } from "@/lib/global/auth/sign-in-officer-action";
 
 type Step = "login" | "otp";
@@ -21,9 +21,19 @@ function formatOtpError(
   return base;
 }
 
-export function LoginScreen({ passwordSet }: { passwordSet?: boolean }) {
-  const router = useRouter();
+export function LoginScreen({
+  passwordSet,
+  sessionExpired,
+}: {
+  passwordSet?: boolean;
+  sessionExpired?: boolean;
+}) {
   const [step, setStep] = useState<Step>("login");
+
+  useEffect(() => {
+    if (!sessionExpired) return;
+    void signOut({ redirect: false });
+  }, [sessionExpired]);
   const [email, setEmail] = useState("");
   const [otpSessionId, setOtpSessionId] = useState("");
   const [maskedPhone, setMaskedPhone] = useState("");
@@ -62,12 +72,17 @@ export function LoginScreen({ passwordSet }: { passwordSet?: boolean }) {
       return;
     }
 
-    router.push(AppRoutes.desk);
-    router.refresh();
+    window.location.assign(AppRoutes.desk);
   }
 
   return (
     <AuthScreenLayout>
+      {sessionExpired ? (
+        <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[13px] leading-relaxed text-amber-950">
+          Your session expired. Sign in again with your email, password, and SMS
+          code.
+        </p>
+      ) : null}
       {passwordSet ? (
         <p className="mb-4 rounded-xl bg-accent-soft px-3 py-2.5 text-[13px] leading-relaxed text-accent-deep">
           Password set — sign in with your email and new password.

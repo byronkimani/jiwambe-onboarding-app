@@ -11,6 +11,7 @@ type StageShellProps = {
   nextLabel?: string;
   nextDisabled?: boolean;
   onPause?: () => void;
+  pauseDisabled?: boolean;
   onDisqualify?: () => void;
 };
 
@@ -23,6 +24,7 @@ export function StageShell({
   nextLabel = "Continue",
   nextDisabled,
   onPause,
+  pauseDisabled,
   onDisqualify,
 }: StageShellProps) {
   return (
@@ -53,7 +55,8 @@ export function StageShell({
         {onPause ? (
           <button
             type="button"
-            className="jw-tap rounded-[11px] border-[1.5px] border-line-strong px-4 py-2.5 text-[13.5px] font-bold text-ink-soft"
+            className="jw-tap rounded-[11px] border-[1.5px] border-line-strong px-4 py-2.5 text-[13.5px] font-bold text-ink-soft disabled:opacity-50"
+            disabled={pauseDisabled}
             onClick={onPause}
           >
             ⏸ Pause

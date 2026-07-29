@@ -337,12 +337,4 @@ export const onboardingOfficerAuthHandlers = [
 
     return HttpResponse.json({ ok: true });
   }),
-
-  http.get(upstreamPath("/onboarding/applications"), ({ request }) => {
-    const auth = request.headers.get("Authorization");
-    if (!auth?.startsWith("Bearer mock_access_")) {
-      return HttpResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
-    return HttpResponse.json({ applications: [] });
-  }),
 ];

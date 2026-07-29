@@ -10,13 +10,20 @@ import {
 import { formatKes } from "@/lib/onboarding/display/format-kes";
 import { AppRoutes } from "@/lib/global/shared/routes";
 import { cn } from "@/lib/utils";
+import { CaptureInlineError } from "@/components/onboarding/capture/capture-inline-error";
+import { isReadinessComplete } from "@/lib/onboarding/capture/readiness";
 
 type Props = {
   form: CaptureFormState;
   patchForm: (patch: Partial<CaptureFormState>) => void;
+  showValidation?: boolean;
 };
 
-export function ReadinessStageBody({ form, patchForm }: Props) {
+export function ReadinessStageBody({
+  form,
+  patchForm,
+  showValidation = false,
+}: Props) {
   const r = form.readiness;
   const allYes = READINESS_ITEMS.every((it) => r[it.k]);
   const anyChecked = READINESS_ITEMS.some((it) => r[it.k]);
@@ -118,6 +125,11 @@ export function ReadinessStageBody({ form, patchForm }: Props) {
           application stall halfway with the customer waiting.
         </p>
       ) : null}
+
+      <CaptureInlineError
+        show={showValidation && !isReadinessComplete(r)}
+        message="Complete every readiness item before continuing."
+      />
 
       <Link
         href={AppRoutes.desk}

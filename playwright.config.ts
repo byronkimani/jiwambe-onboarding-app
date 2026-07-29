@@ -3,6 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 const e2ePort = Number(process.env.E2E_NEXT_PORT ?? 3100);
 const baseURL =
   process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${e2ePort}`;
+const webServerReadyUrl = `${baseURL}/api/onboarding/health`;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -24,6 +25,7 @@ export default defineConfig({
   projects: [
     {
       name: "tablet",
+      testIgnore: /capture-journey\.spec\.ts$/,
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 1024, height: 768 },
@@ -40,11 +42,11 @@ export default defineConfig({
   ],
   webServer: {
     command: "node e2e/run-dev-e2e.cjs",
-    url: baseURL,
+    url: webServerReadyUrl,
     env: {
       E2E_NEXT_PORT: String(e2ePort),
     },
-    reuseExistingServer: process.env.PW_REUSE_DEV_SERVER === "1",
+    reuseExistingServer: false,
     timeout: 120_000,
     stdout: "pipe",
     stderr: "pipe",

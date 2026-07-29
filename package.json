@@ -9,14 +9,15 @@
   },
   "scripts": {
     "dev": "next dev",
+    "dev:e2e": "node e2e/run-dev-e2e.cjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "pnpm run typecheck && vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
+    "test:e2e": "node e2e/run-playwright.cjs",
+    "test:e2e:ui": "node e2e/run-playwright.cjs --ui",
     "test:all": "pnpm test && pnpm test:e2e"
   },
   "dependencies": {

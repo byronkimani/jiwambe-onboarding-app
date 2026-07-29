@@ -6,11 +6,22 @@ import type { CaptureStageKey } from "@/lib/global/shared/routes";
 import { AppRoutes } from "@/lib/global/shared/routes";
 import { ReadinessStageBody } from "@/components/onboarding/capture/stages/readiness-stage-body";
 import {
-  CATALOG_PRODUCTS,
-  INVENTORY_BIKES,
   PORTAL_CUSTOMERS,
+  MIN_DEPOSIT_KES,
 } from "@/lib/onboarding/fixtures/capture-fixtures";
 import type { CaptureFormState } from "@/lib/onboarding/capture/types";
+import { validateCaptureStage } from "@/lib/onboarding/capture/stage-validation";
+import { useInventory } from "@/lib/onboarding/use-inventory";
+import { useCatalogProducts } from "@/lib/onboarding/use-catalog-products";
+import { CaptureInlineError } from "@/components/onboarding/capture/capture-inline-error";
+import { ProductDepositStkPanel } from "@/components/onboarding/capture/product-deposit-stk-panel";
+import { useCaptureWizard } from "@/components/onboarding/capture/capture-wizard-context";
+import { KenyaPhoneInput } from "@/components/onboarding/atoms/kenya-phone-input";
+import { ValidatedTextInput } from "@/components/onboarding/atoms/validated-text-input";
+import { nationalIdFormatErrorMessage } from "@/lib/onboarding/validation/national-id";
+import { apiCustomerLookup } from "@/lib/onboarding/capture/application-api";
+import { normalizeNationalIdDigits } from "@/lib/onboarding/validation/national-id";
+import { parseKenyaPhoneForSubmit } from "@/lib/global/auth/normalize-phone";
 import { PhotoSlot } from "@/components/onboarding/atoms/photo-slot";
 import { IdOcrPanel } from "@/components/onboarding/capture/id-ocr-panel";
 import { FaceMatchPanel } from "@/components/onboarding/capture/face-match-panel";
@@ -20,13 +31,29 @@ import { Button } from "@/components/ui/button";
 export type CaptureStageBodyProps = {
   stage: CaptureStageKey;
   form: CaptureFormState;
-  patchForm: (patch: Partial<CaptureFormState>) => void;
+  showValidation?: boolean;
 };
 
-export function CaptureStageBody({ stage, form, patchForm }: CaptureStageBodyProps) {
+export function CaptureStageBody({
+  stage,
+  form,
+  showValidation = false,
+}: CaptureStageBodyProps) {
+  const { patchForm, referenceCode, syncFromResource } = useCaptureWizard();
+  const {
+    items: inventoryItems,
+    rules: inventoryRules,
+    loading: inventoryLoading,
+    error: inventoryError,
+  } = useInventory();
+  const {
+    products: catalogProducts,
+    loading: catalogLoading,
+    error: catalogError,
+  } = useCatalogProducts();
   const [quoteDaily, setQuoteDaily] = useState<number | null>(null);
   const [lookupQuery, setLookupQuery] = useState("");
-  const [stkPending, setStkPending] = useState(false);
+  const [lookupMessage, setLookupMessage] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [anomalies, setAnomalies] = useState<string[] | null>(null);
 
@@ -46,6 +73,12 @@ export function CaptureStageBody({ stage, form, patchForm }: CaptureStageBodyPro
     };
   }, [stage, form.productId, form.deposit]);
 
+  const stageValidation = showValidation
+    ? validateCaptureStage(stage, form)
+    : { ok: true as const };
+  const fieldErrors =
+    stageValidation.ok === false ? stageValidation.fieldErrors : {};
+
   const filteredPortal = PORTAL_CUSTOMERS.filter((c) => {
     const q = lookupQuery.toLowerCase();
     return (
@@ -57,10 +90,42 @@ export function CaptureStageBody({ stage, form, patchForm }: CaptureStageBodyPro
   });
 
   if (stage === "readiness") {
-    return <ReadinessStageBody form={form} patchForm={patchForm} />;
+    return (
+      <ReadinessStageBody
+        form={form}
+        patchForm={patchForm}
+        showValidation={showValidation}
+      />
+    );
   }
 
   if (stage === "lookup") {
+    async function runLookupSearch() {
+      setLookupMessage(null);
+      const digits = normalizeNationalIdDigits(lookupQuery);
+      const phoneParsed = parseKenyaPhoneForSubmit(lookupQuery);
+      const body =
+        phoneParsed.ok
+          ? { phone: lookupQuery }
+          : digits.length >= 5
+            ? { nationalId: digits }
+            : null;
+      if (!body) {
+        setLookupMessage("Enter a valid phone or National ID to search.");
+        return;
+      }
+      const result = await apiCustomerLookup(body);
+      if (!result.ok) {
+        setLookupMessage(result.message);
+        return;
+      }
+      if (result.matches.length === 0) {
+        setLookupMessage("No portal matches — use new customer below.");
+      } else {
+        setLookupMessage(`${result.matches.length} match(es) from API.`);
+      }
+    }
+
     return (
       <div className="mt-4 space-y-4">
         <ProtoField label="Phone number or National ID">
@@ -70,6 +135,12 @@ export function CaptureStageBody({ stage, form, patchForm }: CaptureStageBodyPro
             onChange={(e) => setLookupQuery(e.target.value)}
           />
         </ProtoField>
+        <ProtoBtn ghost small onClick={() => void runLookupSearch()}>
+          Search portal (API)
+        </ProtoBtn>
+        {lookupMessage ? (
+          <p className="text-sm text-ink-soft">{lookupMessage}</p>
+        ) : null}
         {filteredPortal.map((customer) => (
           <button
             key={customer.idNo}
@@ -82,6 +153,8 @@ export function CaptureStageBody({ stage, form, patchForm }: CaptureStageBodyPro
                 phone: customer.phone,
                 idNo: customer.idNo,
                 county: customer.county,
+                selectedLeadId: `lead_${customer.idNo.replace(/\s/g, "")}`,
+                selectedLeadSource: "PORTAL",
               })
             }
           >
@@ -89,7 +162,16 @@ export function CaptureStageBody({ stage, form, patchForm }: CaptureStageBodyPro
             <p className="text-sm text-ink-soft">{customer.phone}</p>
           </button>
         ))}
-        <ProtoBtn ghost onClick={() => patchForm({ customerFound: "new" })}>
+        <ProtoBtn
+          ghost
+          onClick={() =>
+            patchForm({
+              customerFound: "new",
+              selectedLeadId: null,
+              selectedLeadSource: "WALK_IN",
+            })
+          }
+        >
           New customer (no portal record)
         </ProtoBtn>
         {form.customerFound ? (
@@ -97,6 +179,10 @@ export function CaptureStageBody({ stage, form, patchForm }: CaptureStageBodyPro
             Selected: {form.customerFound === "portal" ? form.name : "New"}
           </p>
         ) : null}
+        <CaptureInlineError
+          show={showValidation}
+          message={fieldErrors.customerFound}
+        />
       </div>
     );
   }
@@ -104,25 +190,42 @@ export function CaptureStageBody({ stage, form, patchForm }: CaptureStageBodyPro
   if (stage === "identity") {
     return (
       <div className="mt-4 grid gap-3 md:grid-cols-2">
-        {(
-          [
-            ["name", "Full name"],
-            ["phone", "Phone"],
-            ["idNo", "National ID"],
-            ["county", "County"],
-          ] as const
-        ).map(([key, label]) => (
-          <ProtoField key={key} label={label}>
-            <ProtoInput
-              value={form[key]}
-              onChange={(e) => patchForm({ [key]: e.target.value })}
-            />
-          </ProtoField>
-        ))}
+        <ProtoField label="Full name" required>
+          <ValidatedTextInput
+            value={form.name}
+            showValidation={showValidation}
+            validate={(v) => (v.trim() ? null : "Full name is required.")}
+            onChange={(name) => patchForm({ name })}
+          />
+        </ProtoField>
+        <ProtoField label="Phone" required>
+          <KenyaPhoneInput
+            value={form.phone}
+            showValidation={showValidation}
+            onChange={(phone) => patchForm({ phone })}
+          />
+        </ProtoField>
+        <ProtoField label="National ID" required>
+          <ValidatedTextInput
+            value={form.idNo}
+            showValidation={showValidation}
+            validate={(v) => nationalIdFormatErrorMessage(v)}
+            onChange={(idNo) => patchForm({ idNo })}
+          />
+        </ProtoField>
+        <ProtoField label="County" required>
+          <ValidatedTextInput
+            value={form.county}
+            showValidation={showValidation}
+            validate={(v) => (v.trim() ? null : "County is required.")}
+            onChange={(county) => patchForm({ county })}
+          />
+        </ProtoField>
         <PhotoSlot
           label="National ID (front)"
           required
           image={form.idPhotoFront}
+          showValidation={showValidation}
           onCapture={(url) => patchForm({ idPhotoFront: url })}
           onRetake={() => patchForm({ idPhotoFront: null })}
         />
@@ -130,6 +233,7 @@ export function CaptureStageBody({ stage, form, patchForm }: CaptureStageBodyPro
           label="Customer selfie"
           required
           image={form.selfiePhoto}
+          showValidation={showValidation}
           onCapture={(url) => patchForm({ selfiePhoto: url })}
           onRetake={() => patchForm({ selfiePhoto: null })}
         />
@@ -148,7 +252,7 @@ export function CaptureStageBody({ stage, form, patchForm }: CaptureStageBodyPro
   if (stage === "dl") {
     return (
       <div className="mt-4 space-y-3">
-        <ProtoField label="Driving licence situation">
+        <ProtoField label="Driving licence situation" required>
           <select
             className="jw-focus w-full rounded-[10px] border-[1.5px] border-line bg-card px-3.5 py-3"
             value={form.dlSituation}
@@ -160,19 +264,30 @@ export function CaptureStageBody({ stage, form, patchForm }: CaptureStageBodyPro
             <option value="processing">Expired / processing</option>
             <option value="none">None</option>
           </select>
+          <CaptureInlineError
+            show={showValidation}
+            message={fieldErrors.dlSituation}
+          />
         </ProtoField>
-        <ProtoInput
-          placeholder="DL number"
-          value={form.dlNumber}
-          onChange={(e) => patchForm({ dlNumber: e.target.value })}
-        />
+        {form.dlSituation && form.dlSituation !== "none" ? (
+          <ProtoField label="DL number" required>
+            <ValidatedTextInput
+              value={form.dlNumber}
+              showValidation={showValidation}
+              validate={(v) =>
+                v.trim() ? null : "DL number is required."
+              }
+              onChange={(dlNumber) => patchForm({ dlNumber })}
+            />
+          </ProtoField>
+        ) : null}
       </div>
     );
   }
 
   if (stage === "cogc") {
     return (
-      <ProtoField label="Certificate of Good Conduct">
+      <ProtoField label="Certificate of Good Conduct" required>
         <select
           className="jw-focus w-full rounded-[10px] border-[1.5px] border-line bg-card px-3.5 py-3"
           value={form.cogcSituation}
@@ -183,6 +298,10 @@ export function CaptureStageBody({ stage, form, patchForm }: CaptureStageBodyPro
           <option value="fingerprints">Fingerprints taken</option>
           <option value="none">Not started</option>
         </select>
+        <CaptureInlineError
+          show={showValidation}
+          message={fieldErrors.cogcSituation}
+        />
       </ProtoField>
     );
   }
@@ -205,15 +324,38 @@ export function CaptureStageBody({ stage, form, patchForm }: CaptureStageBodyPro
                 patchForm({ references });
               }}
             />
+            <CaptureInlineError
+              show={showValidation}
+              message={fieldErrors[`references.${index}.name`]}
+            />
             <ProtoInput
               className="mt-2"
-              placeholder="Phone"
-              value={ref.phone ?? ""}
+              placeholder="Relationship"
+              value={ref.relationship}
               onChange={(e) => {
                 const references = [...form.references];
-                references[index] = { ...ref, phone: e.target.value };
+                references[index] = { ...ref, relationship: e.target.value };
                 patchForm({ references });
               }}
+            />
+            <CaptureInlineError
+              show={showValidation}
+              message={fieldErrors[`references.${index}.relationship`]}
+            />
+            <div className="mt-2">
+              <KenyaPhoneInput
+                value={ref.phone ?? ""}
+                showValidation={showValidation}
+                onChange={(phone) => {
+                  const references = [...form.references];
+                  references[index] = { ...ref, phone };
+                  patchForm({ references });
+                }}
+              />
+            </div>
+            <CaptureInlineError
+              show={showValidation}
+              message={fieldErrors[`references.${index}.phone`]}
             />
           </div>
         ))}
@@ -225,6 +367,10 @@ export function CaptureStageBody({ stage, form, patchForm }: CaptureStageBodyPro
           />
           Customer consents to reference verification calls
         </label>
+        <CaptureInlineError
+          show={showValidation}
+          message={fieldErrors.refConsent}
+        />
       </div>
     );
   }
@@ -250,15 +396,27 @@ export function CaptureStageBody({ stage, form, patchForm }: CaptureStageBodyPro
             outcome (prototype sub-flow).
           </p>
         ) : null}
+        <CaptureInlineError
+          show={showValidation}
+          message={fieldErrors.opModel}
+        />
       </div>
     );
   }
 
   if (stage === "product") {
+    const minDeposit =
+      MIN_DEPOSIT_KES[form.opModel as keyof typeof MIN_DEPOSIT_KES] ?? 0;
     return (
       <div className="mt-4 space-y-4">
+        {catalogLoading ? (
+          <p className="text-sm text-ink-soft">Loading products…</p>
+        ) : null}
+        {catalogError ? (
+          <p className="text-sm font-semibold text-red-600">{catalogError}</p>
+        ) : null}
         <div className="grid gap-2 md:grid-cols-3">
-          {CATALOG_PRODUCTS.map((product) => (
+          {catalogProducts.map((product) => (
             <ProtoBtn
               key={product.id}
               ghost={form.productId !== product.id}
@@ -271,7 +429,11 @@ export function CaptureStageBody({ stage, form, patchForm }: CaptureStageBodyPro
             </ProtoBtn>
           ))}
         </div>
-        <ProtoField label="Deposit (KES)">
+        <CaptureInlineError
+          show={showValidation}
+          message={fieldErrors.productId}
+        />
+        <ProtoField label="Deposit (KES)" required>
           <ProtoInput
             type="number"
             value={String(form.deposit)}
@@ -279,29 +441,29 @@ export function CaptureStageBody({ stage, form, patchForm }: CaptureStageBodyPro
               patchForm({ deposit: Number(e.target.value) || 0 })
             }
           />
+          <CaptureInlineError
+            show={showValidation}
+            message={fieldErrors.deposit}
+          />
+          {minDeposit > 0 ? (
+            <p className="mt-1 text-xs text-ink-soft">
+              Minimum for this model: KES {minDeposit.toLocaleString()}
+            </p>
+          ) : null}
         </ProtoField>
         {quoteDaily ? (
           <p className="text-sm font-bold text-accent-deep">
             Daily installment (from quote): KES {quoteDaily.toLocaleString()}
           </p>
         ) : null}
-        <ProtoBtn
-          ghost
-          disabled={stkPending}
-          onClick={() => {
-            setStkPending(true);
-            window.setTimeout(() => {
-              setStkPending(false);
-              patchForm({ stkVerified: true });
-            }, 1500);
-          }}
-        >
-          {form.stkVerified
-            ? "M-Pesa verified (demo)"
-            : stkPending
-              ? "STK push pending…"
-              : "Send STK push (demo)"}
-        </ProtoBtn>
+        <ProductDepositStkPanel
+          form={form}
+          referenceCode={referenceCode}
+          showValidation={showValidation}
+          fieldError={fieldErrors.stkVerified}
+          patchForm={patchForm}
+          syncFromResource={syncFromResource}
+        />
       </div>
     );
   }
@@ -309,24 +471,41 @@ export function CaptureStageBody({ stage, form, patchForm }: CaptureStageBodyPro
   if (stage === "bike") {
     return (
       <div className="mt-4 grid gap-2">
-        {INVENTORY_BIKES.map((bike) => (
-          <button
-            key={bike.reg}
-            type="button"
-            className="jw-tap rounded-2xl border border-line bg-card p-4 text-left"
-            onClick={() => patchForm({ bikeReg: bike.reg })}
-          >
-            <p className="font-bold">{bike.reg}</p>
-            <p className="text-sm text-ink-soft">
-              {bike.model} · {bike.color}
-            </p>
-          </button>
-        ))}
+        {inventoryLoading ? (
+          <p className="text-sm text-ink-soft">Loading dealership stock…</p>
+        ) : null}
+        {inventoryError ? (
+          <p className="text-sm font-semibold text-red-600">{inventoryError}</p>
+        ) : null}
+        {inventoryItems.map((bike) => {
+          const assignable = inventoryRules.assignableStatuses.includes(
+            bike.status,
+          );
+          return (
+            <button
+              key={bike.registration}
+              type="button"
+              disabled={!assignable}
+              className="jw-tap rounded-2xl border border-line bg-card p-4 text-left disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => patchForm({ bikeReg: bike.registration })}
+            >
+              <p className="font-bold">{bike.registration}</p>
+              <p className="text-sm text-ink-soft">
+                {bike.model} · {bike.color}
+                {!assignable ? " · not assignable" : ""}
+              </p>
+            </button>
+          );
+        })}
         {form.bikeReg ? (
           <p className="text-sm font-bold text-accent-deep">
-            Selected {form.bikeReg} — 2h soft hold (demo)
+            Selected {form.bikeReg} — {inventoryRules.softHoldMinutes}m soft hold
           </p>
         ) : null}
+        <CaptureInlineError
+          show={showValidation}
+          message={fieldErrors.bikeReg}
+        />
       </div>
     );
   }

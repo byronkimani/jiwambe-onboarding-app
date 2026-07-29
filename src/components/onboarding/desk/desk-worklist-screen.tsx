@@ -3,12 +3,19 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type {
+  OnboardingApplicationSummary,
+} from "@/lib/onboarding/application-resource";
 import type { ApplicationState, OnboardingApplication } from "@/lib/onboarding/types";
+import { mapSummaryToDeskCard } from "@/lib/onboarding/map-resource-to-desk-card";
 import { OnboardingTopBar } from "@/components/onboarding/chrome/top-bar";
 import { ApplicationFolderCard } from "@/components/onboarding/desk/application-folder-card";
 import { DeskBoardView } from "@/components/onboarding/desk/desk-board-view";
 import { ProtoBtn } from "@/components/onboarding/atoms/proto-field";
 import { AppRoutes, captureStage } from "@/lib/global/shared/routes";
+import { apiFetchCurrentApplication } from "@/lib/onboarding/capture/application-api";
+import { firstIncompleteCaptureStage } from "@/lib/onboarding/capture/first-incomplete-capture-stage";
+import { hydrateCaptureFormFromResource } from "@/lib/onboarding/capture/resource-to-capture-form";
 import { cn } from "@/lib/utils";
 import { getSeedApplications } from "@/lib/onboarding/fixtures/seed-applications";
 
@@ -26,7 +33,8 @@ function filterLive(apps: OnboardingApplication[]) {
     (a) =>
       a.state !== "ACTIVE_LOAN" &&
       a.state !== "DISQUALIFIED" &&
-      a.state !== "PAUSED",
+      a.state !== "PAUSED" &&
+      a.state !== "DRAFT",
   );
 }
 
@@ -45,34 +53,63 @@ export function DeskWorklistScreen({
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const response = await fetch(AppRoutes.apiOnboardingApplications, {
-        credentials: "same-origin",
-      });
-      if (!response.ok) {
-        if (!cancelled) {
-          setApps(DEMO_APPLICATIONS);
-          setLoading(false);
+      setLoading(true);
+      const fetchJson = async (query: string) => {
+        const response = await fetch(
+          query
+            ? `${AppRoutes.apiOnboardingApplications}?${query}`
+            : AppRoutes.apiOnboardingApplications,
+          { credentials: "same-origin" },
+        );
+        if (!response.ok) return null;
+        const body = (await response.json()) as {
+          applications: OnboardingApplicationSummary[];
+        };
+        return body.applications ?? [];
+      };
+
+      let summaries: OnboardingApplicationSummary[] | null = null;
+      if (mode === "history") {
+        summaries = await fetchJson("scope=history");
+      } else if (mode === "drafts") {
+        const [paused, draft] = await Promise.all([
+          fetchJson("lifecycleState=PAUSED"),
+          fetchJson("lifecycleState=DRAFT"),
+        ]);
+        if (paused === null && draft === null) {
+          summaries = null;
+        } else {
+          const merged = [...(paused ?? []), ...(draft ?? [])];
+          const byRef = new Map(merged.map((s) => [s.referenceCode, s]));
+          summaries = [...byRef.values()];
         }
+      } else {
+        summaries = await fetchJson("");
+      }
+
+      if (cancelled) return;
+
+      if (summaries === null) {
+        setApps(mode === "queue" ? DEMO_APPLICATIONS : []);
+        setLoading(false);
         return;
       }
-      const body = (await response.json()) as {
-        applications: OnboardingApplication[];
-      };
-      if (!cancelled) {
-        setApps(
-          body.applications?.length ? body.applications : DEMO_APPLICATIONS,
-        );
-        setLoading(false);
-      }
+
+      setApps(
+        summaries.length > 0
+          ? summaries.map(mapSummaryToDeskCard)
+          : [],
+      );
+      setLoading(false);
     }
     void load();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [mode]);
 
   const drafts = useMemo(
-    () => apps.filter((a) => a.state === "PAUSED"),
+    () => apps.filter((a) => a.state === "PAUSED" || a.state === "DRAFT"),
     [apps],
   );
   const doneCount = useMemo(
@@ -88,6 +125,23 @@ export function DeskWorklistScreen({
       ),
     );
   }, []);
+
+  const startNewApplication = useCallback(async () => {
+    const current = await apiFetchCurrentApplication();
+    if (current.ok) {
+      const ref = current.application.referenceCode;
+      const resume = window.confirm(
+        `You have an open application (${ref}). Resume it instead of starting another?`,
+      );
+      if (resume) {
+        const form = hydrateCaptureFormFromResource(current.application);
+        const target = firstIncompleteCaptureStage(form);
+        router.push(captureStage(target, ref));
+        return;
+      }
+    }
+    router.push(captureStage("readiness"));
+  }, [router]);
 
   const topBarTitle =
     mode === "history"
@@ -226,7 +280,7 @@ export function DeskWorklistScreen({
                 </button>
               ))}
             </div>
-            <ProtoBtn onClick={() => router.push(captureStage("readiness"))}>
+            <ProtoBtn onClick={() => void startNewApplication()}>
               + New application
             </ProtoBtn>
           </div>

@@ -19,7 +19,7 @@ export function isHistoryState(state: ApplicationState): boolean {
 }
 
 export function isDraftState(state: ApplicationState): boolean {
-  return state === "PAUSED";
+  return state === "PAUSED" || state === "DRAFT";
 }
 
 export function isLiveDeskState(state: ApplicationState): boolean {

@@ -1,5 +1,23 @@
-import { onboardingNotImplemented } from "@/lib/global/onboarding/onboarding-not-implemented";
+import { NextResponse } from "next/server";
+import { onboardingUpstream } from "@/lib/global/onboarding/onboarding-bff";
+import { parseUpstreamInventoryResponse } from "@/lib/global/onboarding/onboarding-bff-parse";
 
-export async function GET() {
-  return onboardingNotImplemented();
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const query = url.searchParams.toString();
+  const path = query
+    ? `/onboarding/inventory?${query}`
+    : "/onboarding/inventory";
+
+  const upstream = await onboardingUpstream(path, { method: "GET" });
+  if (upstream instanceof NextResponse) {
+    return upstream;
+  }
+
+  const parsed = await parseUpstreamInventoryResponse(upstream);
+  if (!parsed.ok) {
+    return parsed.response;
+  }
+
+  return NextResponse.json({ items: parsed.items, rules: parsed.rules });
 }

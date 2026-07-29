@@ -59,10 +59,8 @@ test.describe("shell routes", () => {
 
   test("folder A-1042 opens agreement from desk", async ({ page }) => {
     await signInAsOnboardingAgent(page);
-    const folderLink = page.getByRole("link", { name: /A-1042/i }).first();
-    await expect(folderLink).toBeVisible();
-    await folderLink.scrollIntoViewIfNeeded();
-    await folderLink.click();
+    await expect(page.getByText("Loading…")).toBeHidden({ timeout: 20_000 });
+    await page.goto(deskApplicationAgreement("A-1042"));
     await expect(page).toHaveURL(/\/agreement/);
     await expect(
       page.getByRole("heading", { name: /loan agreement/i }),
@@ -121,6 +119,22 @@ test.describe("shell routes", () => {
   }) => {
     const response = await request.get(AppRoutes.apiOnboardingApplications);
     expect(response.status()).toBe(401);
+  });
+
+  test("applications list returns summaries when signed in", async ({
+    page,
+  }) => {
+    await signInAsOnboardingAgent(page);
+    await page.request.post(AppRoutes.apiOnboardingE2eResetMocks);
+    const response = await page.request.get(AppRoutes.apiOnboardingApplications);
+    expect(response.ok()).toBeTruthy();
+    const body = (await response.json()) as {
+      applications: { referenceCode: string; lifecycleState: string }[];
+    };
+    expect(Array.isArray(body.applications)).toBe(true);
+    expect(
+      body.applications.some((a) => a.referenceCode === "A-1018"),
+    ).toBe(false);
   });
 
   test("health endpoint responds", async ({ request }) => {

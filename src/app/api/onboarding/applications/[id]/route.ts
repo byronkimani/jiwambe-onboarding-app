@@ -1,20 +1,58 @@
 import { NextResponse } from "next/server";
-import { getOnboardingSession } from "@/lib/global/auth/require-onboarding-session";
-import { getSeedApplicationById } from "@/lib/onboarding/fixtures/seed-applications";
+import { onboardingUpstream } from "@/lib/global/onboarding/onboarding-bff";
+import { parseUpstreamApplicationResponse } from "@/lib/global/onboarding/onboarding-bff-parse";
+import { patchApplicationRequestSchema } from "@/lib/onboarding/schemas/application-schemas";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, { params }: Params) {
-  const session = await getOnboardingSession();
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const { id } = await params;
-  const application = getSeedApplicationById(id);
-  if (!application) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const upstream = await onboardingUpstream(
+    `/onboarding/applications/${encodeURIComponent(id)}`,
+    { method: "GET" },
+  );
+  if (upstream instanceof NextResponse) {
+    return upstream;
   }
 
-  return NextResponse.json({ application });
+  const parsed = await parseUpstreamApplicationResponse(upstream);
+  if (!parsed.ok) {
+    return parsed.response;
+  }
+
+  return NextResponse.json({ application: parsed.application });
+}
+
+export async function PATCH(request: Request, { params }: Params) {
+  const { id } = await params;
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "invalid_body" }, { status: 400 });
+  }
+
+  const parsedBody = patchApplicationRequestSchema.safeParse(body);
+  if (!parsedBody.success) {
+    return NextResponse.json({ error: "invalid_body" }, { status: 400 });
+  }
+
+  const upstream = await onboardingUpstream(
+    `/onboarding/applications/${encodeURIComponent(id)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(parsedBody.data),
+    },
+  );
+  if (upstream instanceof NextResponse) {
+    return upstream;
+  }
+
+  const parsed = await parseUpstreamApplicationResponse(upstream);
+  if (!parsed.ok) {
+    return parsed.response;
+  }
+
+  return NextResponse.json({ application: parsed.application });
 }

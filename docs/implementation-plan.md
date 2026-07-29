@@ -5,8 +5,8 @@
 **Implementation status:** [`implementation-status.md`](implementation-status.md)  
 **Onboarding map:** [`onboarding-map.md`](onboarding-map.md)  
 **Design reference:** [`prototype/`](prototype/)  
-**API sketch:** [`field-rider-api-contract.md`](field-rider-api-contract.md) — officer endpoints **TBD**  
-**Last updated:** 2026-07-24
+**API sketch:** [`onboarding-applications-api-contract.md`](onboarding-applications-api-contract.md), [`field-rider-api-contract.md`](field-rider-api-contract.md)  
+**Last updated:** 2026-07-29
 
 ---
 
@@ -273,6 +273,7 @@ Next.js 16, React 19, TypeScript strict, Tailwind 4, shadcn/ui, Vitest, Playwrig
 **Deliverables:**
 
 - `upstreamRequest()` + typed BFF routes per backend contract
+- **Applications slice (demo shipped):** `GET/POST/PATCH` applications, pause/submit/disqualify, `POST` customers/lookup, MSW store, Zod validation, capture wizard persistence; catalog products, deposit STK/validate, inventory + rules; desk worklist query modes; Playwright `capture-journey.spec.ts`
 - Sync ledger UI backed by real queue state
 - MSW parity with contract; rename `/api/rider/*` if needed
 

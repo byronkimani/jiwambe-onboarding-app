@@ -1,4 +1,5 @@
 export type ApplicationState =
+  | "DRAFT"
   | "PAUSED"
   | "DISQUALIFIED"
   | "OPS_REVIEW"

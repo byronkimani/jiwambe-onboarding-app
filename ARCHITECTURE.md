@@ -35,6 +35,13 @@ Browser (PWA on tablet)
 | Desk | `/desk`, `/desk/history`, `/desk/drafts` |
 | Capture | `/capture/[stage]` — readiness through review |
 
+## Applications (officer)
+
+- Resource shape: [`docs/onboarding-applications-api-contract.md`](docs/onboarding-applications-api-contract.md)
+- Types: [`src/lib/onboarding/application-resource.ts`](src/lib/onboarding/application-resource.ts)
+- BFF: `GET/POST /api/onboarding/applications`, `GET/PATCH …/:id`, `POST …/customers/lookup`, `POST …/catalog/quotes`
+- Desk UI uses [`OnboardingApplication`](src/lib/onboarding/types.ts) cards mapped from the resource
+
 ## MSW
 
 `MOCK_JIWAMBE_API=1` → [`src/instrumentation.ts`](src/instrumentation.ts) starts MSW ([`src/mocks/`](src/mocks/)).

@@ -1,13 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { OnboardingApplicationResource } from "@/lib/onboarding/application-resource";
+import { mapResourceToDeskCard } from "@/lib/onboarding/map-resource-to-desk-card";
 import type { OnboardingApplication } from "@/lib/onboarding/types";
+import { parseApplicationResource } from "@/lib/onboarding/schemas/parse-onboarding-json";
 import { apiOnboardingApplication } from "@/lib/global/shared/routes";
 
 export function useApplication(id: string) {
   const [application, setApplication] = useState<OnboardingApplication | null>(
     null,
   );
+  const [resource, setResource] =
+    useState<OnboardingApplicationResource | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,10 +29,19 @@ export function useApplication(id: string) {
         return;
       }
       const body = (await response.json()) as {
-        application: OnboardingApplication;
+        application?: OnboardingApplicationResource;
       };
+      const parsed = parseApplicationResource(
+        body.application ? { application: body.application } : body,
+      );
       if (!cancelled) {
-        setApplication(body.application);
+        if (!parsed.ok) {
+          setError("invalid_response");
+          setLoading(false);
+          return;
+        }
+        setResource(parsed.data);
+        setApplication(mapResourceToDeskCard(parsed.data));
         setLoading(false);
       }
     }
@@ -37,5 +51,5 @@ export function useApplication(id: string) {
     };
   }, [id]);
 
-  return { application, loading, error };
+  return { application, resource, loading, error };
 }

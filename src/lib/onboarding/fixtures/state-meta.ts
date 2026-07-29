@@ -18,6 +18,7 @@ export type LifecycleStep = (typeof FULL_LIFECYCLE)[number];
 export const OFFICER_LIFELINE_STEPS = FULL_LIFECYCLE.slice(1);
 
 const STATE_LIFELINE_INDEX: Record<ApplicationState, number> = {
+  DRAFT: 0,
   PAUSED: 1,
   DISQUALIFIED: 7,
   OPS_REVIEW: 2,
@@ -41,6 +42,11 @@ export const LIFECYCLE: ApplicationState[] = [
 ];
 
 export const STATE_META: Record<ApplicationState, StateMeta> = {
+  DRAFT: {
+    label: "Draft — in progress",
+    tone: "wait",
+    action: "resume",
+  },
   PAUSED: {
     label: "Paused — bike released to stock",
     tone: "wait",

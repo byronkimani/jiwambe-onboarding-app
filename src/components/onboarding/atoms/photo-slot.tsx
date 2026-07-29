@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { ProtoTag } from "@/components/onboarding/atoms/proto-tag";
+import { CaptureInlineError } from "@/components/onboarding/capture/capture-inline-error";
 
 type PhotoSlotProps = {
   label: string;
@@ -9,6 +10,8 @@ type PhotoSlotProps = {
   image?: string | null;
   onCapture: (url: string) => void;
   onRetake: () => void;
+  showValidation?: boolean;
+  validationMessage?: string | null;
 };
 
 export function PhotoSlot({
@@ -17,6 +20,8 @@ export function PhotoSlot({
   image,
   onCapture,
   onRetake,
+  showValidation = false,
+  validationMessage,
 }: PhotoSlotProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [zoom, setZoom] = useState(false);
@@ -85,6 +90,10 @@ export function PhotoSlot({
           📷 Capture with tablet camera
         </button>
       )}
+      <CaptureInlineError
+        show={showValidation && !image}
+        message={validationMessage ?? `${label} is required.`}
+      />
       {zoom && image ? (
         <div
           className="fixed inset-0 z-[90] flex cursor-zoom-out flex-col items-center justify-center bg-[rgba(12,13,16,0.85)] p-6"
