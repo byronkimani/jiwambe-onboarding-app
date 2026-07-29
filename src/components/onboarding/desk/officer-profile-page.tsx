@@ -5,7 +5,7 @@ import { OnboardingTopBar } from "@/components/onboarding/chrome/top-bar";
 import { ProtoBtn } from "@/components/onboarding/atoms/proto-field";
 import { AppRoutes } from "@/lib/global/shared/routes";
 import { useOnboardingChrome } from "@/components/onboarding/onboarding-chrome-context";
-import { signOut } from "next-auth/react";
+import { performOfficerSignOut } from "@/components/auth/sign-out-button";
 
 function ProfileRow({ label, value }: { label: string; value: string }) {
   return (
@@ -66,7 +66,7 @@ export function OfficerProfilePage() {
             </ProtoBtn>
             <ProtoBtn
               className="flex-1 bg-red-bg text-red"
-              onClick={() => void signOut({ callbackUrl: AppRoutes.home })}
+              onClick={() => void performOfficerSignOut()}
             >
               Sign out
             </ProtoBtn>

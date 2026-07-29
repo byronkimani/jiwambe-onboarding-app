@@ -1,151 +1,115 @@
+import type { DefaultSession } from "next-auth";
+import type { JWT } from "next-auth/jwt";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "@/auth.config";
+import { authorizeOfficerOtpCredentials } from "@/lib/global/auth/officer-otp-authorize";
+import { OtpVerifyError } from "@/lib/global/auth/otp-verify-error";
 import {
-  DEMO_AGENT_PASSWORD,
-  DEMO_AGENT_PHONE_NATIONAL,
-  DEMO_OTP_CODE,
-  isValidOfficerEmail,
-  isValidOfficerPassword,
-} from "@/lib/global/auth/demo-credentials";
-import {
-  fetchAgentMeUpstream,
-  loginAgentUpstream,
-} from "@/lib/global/auth/upstream-auth";
-import { buildDemoOfficerAuthUser } from "@/lib/global/auth/authorize-demo-officer";
-import { isMockJiwambeApiEnabled } from "@/lib/global/shared/env";
-import type { JWT } from "next-auth/jwt";
+  accessTokenNeedsRefresh,
+  refreshOfficerTokens,
+} from "@/lib/global/auth/officer-auth-upstream";
 
-const DEMO_SESSION_MS = 24 * 60 * 60 * 1000;
+declare module "next-auth" {
+  interface Session {
+    user: DefaultSession["user"] & {
+      email?: string | null;
+    };
+    error?: string;
+  }
+
+  interface User {
+    accessToken?: string;
+    refreshToken?: string;
+    accessTokenExpiresAt?: number;
+  }
+}
+
+type OfficerJwt = JWT & {
+  accessToken?: string;
+  refreshToken?: string;
+  accessTokenExpiresAt?: number;
+  error?: string;
+  email?: string | null;
+  sub?: string;
+};
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
-  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
-  session: { strategy: "jwt" },
   providers: [
     Credentials({
-      id: "officer-email-otp",
-      name: "Officer email, password, and OTP",
+      id: "officer-otp",
+      name: "Officer OTP",
       credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-        otp: { label: "OTP", type: "text" },
+        email: { type: "text" },
+        otpSessionId: { type: "text" },
+        code: { type: "text" },
       },
       async authorize(credentials) {
-        const email = credentials?.email;
-        const password = credentials?.password;
-        const otp = credentials?.otp;
-        if (
-          typeof email !== "string" ||
-          typeof password !== "string" ||
-          typeof otp !== "string"
-        ) {
-          return null;
-        }
+        const email = String(credentials?.email ?? "");
+        const otpSessionId = String(credentials?.otpSessionId ?? "");
+        const code = String(credentials?.code ?? "");
 
-        if (
-          !isValidOfficerEmail(email) ||
-          !isValidOfficerPassword(password) ||
-          otp !== DEMO_OTP_CODE
-        ) {
-          return null;
+        try {
+          return await authorizeOfficerOtpCredentials(email, otpSessionId, code);
+        } catch (error) {
+          if (error instanceof OtpVerifyError) {
+            throw error;
+          }
+          throw new OtpVerifyError({
+            code: "UPSTREAM_ERROR",
+            message: "Something went wrong. Please try again.",
+          });
         }
-
-        if (isMockJiwambeApiEnabled()) {
-          return buildDemoOfficerAuthUser(email);
-        }
-
-        const login = await loginAgentUpstream(
-          DEMO_AGENT_PHONE_NATIONAL,
-          DEMO_AGENT_PASSWORD,
-        );
-        if (!login.ok) {
-          return null;
-        }
-
-        const me = await fetchAgentMeUpstream(login.accessToken);
-        if (!me.ok) {
-          return null;
-        }
-
-        return {
-          id: me.data.id,
-          name: me.data.name,
-          email: email.trim().toLowerCase(),
-          agentId: me.data.id,
-          agentRole: me.data.role,
-          dealership: me.data.dealership,
-          backendAccessToken: login.accessToken,
-          backendRefreshToken: login.refreshToken,
-          accessTokenExpires: Date.now() + login.expiresIn * 1000,
-        };
       },
     }),
   ],
   callbacks: {
     ...authConfig.callbacks,
-    async jwt({ token, user }): Promise<JWT> {
+    async jwt({ token, user }) {
+      const jwt = token as OfficerJwt;
+
       if (user) {
-        const u = user as {
-          email?: string | null;
-          agentId?: string;
-          agentRole?: string;
-          dealership?: string;
-          backendAccessToken?: string;
-          backendRefreshToken?: string;
-          accessTokenExpires?: number;
-        };
-        return {
-          ...token,
-          sub: user.id,
-          name: user.name,
-          email: u.email ?? undefined,
-          agentId: u.agentId ?? user.id,
-          agentRole: u.agentRole,
-          dealership: u.dealership,
-          backendAccessToken: u.backendAccessToken,
-          backendRefreshToken: u.backendRefreshToken,
-          accessTokenExpires:
-            u.accessTokenExpires ?? Date.now() + DEMO_SESSION_MS,
-          error: undefined,
-        };
+        jwt.accessToken = user.accessToken;
+        jwt.refreshToken = user.refreshToken;
+        jwt.accessTokenExpiresAt = user.accessTokenExpiresAt;
+        jwt.backendAccessToken = user.accessToken;
+        jwt.backendRefreshToken = user.refreshToken;
+        jwt.sub = user.id;
+        jwt.email = user.email;
+        delete jwt.error;
+        return jwt as JWT;
       }
 
-      const expiresAt =
-        typeof token.accessTokenExpires === "number"
-          ? token.accessTokenExpires
-          : 0;
-      if (Date.now() < expiresAt) {
-        return token;
+      if (jwt.error === "RefreshError") {
+        return jwt as JWT;
       }
 
-      return { ...token, error: "RefreshError" };
+      if (
+        jwt.refreshToken &&
+        accessTokenNeedsRefresh(jwt.accessTokenExpiresAt)
+      ) {
+        const refreshed = await refreshOfficerTokens(jwt.refreshToken);
+        if (!refreshed.ok) {
+          jwt.error = "RefreshError";
+          return jwt;
+        }
+        jwt.accessToken = refreshed.accessToken;
+        jwt.refreshToken = refreshed.refreshToken;
+        jwt.accessTokenExpiresAt = refreshed.accessTokenExpiresAt;
+        jwt.backendAccessToken = refreshed.accessToken;
+        jwt.backendRefreshToken = refreshed.refreshToken;
+      }
+
+      return jwt as JWT;
     },
     async session({ session, token }) {
-      if (token.error === "RefreshError") {
-        session.error = token.error;
-        return session;
+      const jwt = token as OfficerJwt;
+      if (session.user) {
+        session.user.email = jwt.email ?? session.user.email;
       }
-      if (typeof token.agentId === "string") {
-        session.agentId = token.agentId;
-        session.user.id = token.agentId;
-      } else if (typeof token.sub === "string") {
-        session.user.id = token.sub;
-      }
-      if (typeof token.agentRole === "string") {
-        session.agentRole = token.agentRole;
-      }
-      if (typeof token.dealership === "string") {
-        session.dealership = token.dealership;
-      }
-      if (typeof token.backendAccessToken === "string") {
-        session.backendAccessToken = token.backendAccessToken;
-      }
-      if (typeof token.name === "string") {
-        session.user.name = token.name;
-      }
-      if (typeof token.email === "string") {
-        session.user.email = token.email;
+      if (jwt.error) {
+        session.error = jwt.error;
       }
       return session;
     },

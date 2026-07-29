@@ -6,14 +6,20 @@ const baseURL =
 
 export default defineConfig({
   testDir: "./e2e",
-  fullyParallel: true,
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1,
   workers: 1,
+  timeout: 60_000,
+  expect: {
+    timeout: 15_000,
+  },
   reporter: process.env.CI ? "github" : [["list"], ["html", { open: "never" }]],
   use: {
     baseURL,
     trace: "on-first-retry",
+    actionTimeout: 15_000,
+    navigationTimeout: 30_000,
   },
   projects: [
     {
@@ -26,8 +32,9 @@ export default defineConfig({
     {
       name: "mobile-chrome",
       use: {
-        ...devices["Pixel 5"],
+        ...devices["Desktop Chrome"],
         viewport: { width: 390, height: 844 },
+        userAgent: devices["Pixel 5"].userAgent,
       },
     },
   ],

@@ -8,12 +8,16 @@ import {
   isCaptureStageKey,
   isDeskPath,
   isProtectedPath,
+  isPublicApiOnboardingPath,
   isPublicPath,
 } from "./routes";
 
 describe("routes", () => {
   it("exposes expected public paths", () => {
     expect(isPublicPath(AppRoutes.home)).toBe(true);
+    expect(isPublicPath(AppRoutes.activate)).toBe(true);
+    expect(isPublicPath(AppRoutes.forgotPassword)).toBe(true);
+    expect(isPublicPath(AppRoutes.resetPassword)).toBe(true);
     expect(isPublicPath(AppRoutes.offline)).toBe(true);
     expect(isPublicPath(AppRoutes.accountBlocked)).toBe(true);
     expect(isPublicPath(AppRoutes.desk)).toBe(false);
@@ -38,5 +42,35 @@ describe("routes", () => {
   it("validates capture stage keys", () => {
     expect(isCaptureStageKey("identity")).toBe(true);
     expect(isCaptureStageKey("invalid")).toBe(false);
+  });
+
+  it("keeps protected onboarding APIs private", () => {
+    expect(isPublicApiOnboardingPath(AppRoutes.apiOnboardingApplications)).toBe(
+      false,
+    );
+    expect(isPublicApiOnboardingPath(AppRoutes.apiOnboardingCatalogQuotes)).toBe(
+      false,
+    );
+    expect(isPublicApiOnboardingPath(AppRoutes.apiOnboardingAuthLogin)).toBe(
+      true,
+    );
+    expect(isPublicApiOnboardingPath(AppRoutes.apiOnboardingAuthOtpResend)).toBe(
+      true,
+    );
+    expect(isPublicApiOnboardingPath(AppRoutes.apiOnboardingLogout)).toBe(false);
+    expect(
+      isPublicApiOnboardingPath(AppRoutes.apiOnboardingAuthPasswordForgot),
+    ).toBe(true);
+    expect(
+      isPublicApiOnboardingPath(AppRoutes.apiOnboardingAuthPasswordReset),
+    ).toBe(true);
+    expect(
+      isPublicApiOnboardingPath(
+        AppRoutes.apiOnboardingAuthPasswordResetPassword,
+      ),
+    ).toBe(true);
+    expect(isPublicApiOnboardingPath(AppRoutes.apiOnboardingE2eResetMocks)).toBe(
+      true,
+    );
   });
 });

@@ -1,18 +1,50 @@
 "use client";
 
-import { signOut } from "next-auth/react";
-import { Button } from "@/components/ui/button";
+import type { ReactNode } from "react";
 import { AppRoutes } from "@/lib/global/shared/routes";
 
-export function SignOutButton() {
+export async function performOfficerSignOut(): Promise<void> {
+  await fetch(AppRoutes.apiOnboardingLogout, {
+    method: "POST",
+    credentials: "same-origin",
+  });
+
+  const csrfResponse = await fetch(`${AppRoutes.apiAuth}/csrf`, {
+    credentials: "same-origin",
+  });
+  const { csrfToken } = (await csrfResponse.json()) as { csrfToken: string };
+
+  await fetch(`${AppRoutes.apiAuth}/signout`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    credentials: "same-origin",
+    redirect: "manual",
+    body: new URLSearchParams({
+      csrfToken,
+      callbackUrl: AppRoutes.home,
+    }),
+  });
+
+  window.location.assign(AppRoutes.home);
+}
+
+export function SignOutButton({
+  className,
+  children,
+}: {
+  className?: string;
+  children?: ReactNode;
+}) {
   return (
-    <Button
+    <button
       type="button"
-      variant="outline"
-      size="sm"
-      onClick={() => signOut({ callbackUrl: AppRoutes.home })}
+      className={
+        className ??
+        "text-xs font-bold text-ink-soft hover:text-accent-deep"
+      }
+      onClick={() => void performOfficerSignOut()}
     >
-      Sign out
-    </Button>
+      {children ?? "Sign out"}
+    </button>
   );
 }

@@ -31,7 +31,7 @@ Legend: **Shipped** | **Demo UI** | **Planned** | **Deferred**
 |---------|--------|-------|
 | Email + OTP login | **Demo UI** | Prototype `auth.js` on `/` |
 | Route gate (`proxy.ts`) | **Shipped** | Protects `/desk`, `/capture`, BFF |
-| Demo officer | **Shipped** | Email `jane.ochieng@contractor.jiwambe.com`, password 8+ chars, OTP `123456` |
+| Demo officer | **Shipped** | Email `john@jiwambe.com`, password `demo12345`, OTP `123456` |
 
 ---
 

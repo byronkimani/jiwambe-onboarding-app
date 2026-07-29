@@ -11,6 +11,7 @@ import {
  * Edge-safe Auth.js config — providers and jwt callbacks added in Phase 3.
  */
 export const authConfig = {
+  secret: process.env.NEXTAUTH_SECRET,
   pages: {
     signIn: AppRoutes.home,
   },

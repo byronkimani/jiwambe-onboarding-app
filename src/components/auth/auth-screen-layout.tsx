@@ -3,6 +3,20 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
+function AuthScreenBrand() {
+  return (
+    <div className="mb-[22px] flex items-center gap-[11px]">
+      <div className="flex h-[38px] w-[38px] items-center justify-center rounded-[11px] bg-accent-deep font-display text-[17px] font-extrabold text-white">
+        J
+      </div>
+      <div>
+        <p className="text-[15px] font-extrabold text-ink">Jiwambe Onboarding</p>
+        <p className="text-[11.5px] text-ink-faint">Officer sign-in</p>
+      </div>
+    </div>
+  );
+}
+
 export function AuthScreenLayout({
   children,
   className,
@@ -19,6 +33,7 @@ export function AuthScreenLayout({
             className,
           )}
         >
+          <AuthScreenBrand />
           {children}
         </div>
       </div>

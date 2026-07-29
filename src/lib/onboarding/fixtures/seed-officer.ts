@@ -3,7 +3,7 @@ import { DEMO_AGENT_EMAIL } from "@/lib/global/auth/demo-credentials";
 
 export const DEFAULT_OFFICER: OfficerProfile = {
   id: "agent-jane-fo12",
-  name: "Jane Ochieng",
+  name: "John",
   role: "Field Officer · FO-12",
   dealership: "Ruiru Hub",
   phone: "254700100000",

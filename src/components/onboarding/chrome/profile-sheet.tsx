@@ -3,7 +3,7 @@
 import { Sheet } from "@/components/ui/sheet";
 import type { OfficerProfile } from "@/lib/onboarding/types";
 import { ProtoBtn } from "@/components/onboarding/atoms/proto-field";
-import { signOut } from "next-auth/react";
+import { performOfficerSignOut } from "@/components/auth/sign-out-button";
 import { AppRoutes } from "@/lib/global/shared/routes";
 
 type ProfileSheetProps = {
@@ -67,7 +67,7 @@ export function ProfileSheet({ open, onClose, officer }: ProfileSheetProps) {
           </ProtoBtn>
           <ProtoBtn
             className="flex-1 bg-red-bg text-red"
-            onClick={() => void signOut({ callbackUrl: AppRoutes.home })}
+            onClick={() => void performOfficerSignOut()}
           >
             Sign out
           </ProtoBtn>
