@@ -14,18 +14,22 @@ function isProtectedAppPath(pathname: string): boolean {
 
 export default auth((request) => {
   const { pathname, searchParams } = request.nextUrl;
-  const isLoggedIn = Boolean(request.auth?.user);
   const sessionError = request.auth?.error;
+  const hasValidSession =
+    Boolean(request.auth?.user) && sessionError !== "RefreshError";
 
-  if (isLoggedIn && sessionError === "RefreshError") {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = AppRoutes.home;
-    redirectUrl.search = "";
-    redirectUrl.searchParams.set("sessionExpired", "1");
-    return NextResponse.redirect(redirectUrl);
+  if (sessionError === "RefreshError") {
+    if (pathname !== AppRoutes.home) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = AppRoutes.home;
+      redirectUrl.search = "";
+      redirectUrl.searchParams.set("sessionExpired", "1");
+      return NextResponse.redirect(redirectUrl);
+    }
+    return NextResponse.next();
   }
 
-  if (isLoggedIn && pathname === AppRoutes.home) {
+  if (hasValidSession && pathname === AppRoutes.home) {
     const callbackUrl = sanitizeCallbackUrl(
       searchParams.get("callbackUrl"),
       AppRoutes.desk,
@@ -33,14 +37,14 @@ export default auth((request) => {
     return NextResponse.redirect(new URL(callbackUrl, request.nextUrl));
   }
 
-  if (!isLoggedIn && pathname.startsWith("/api/onboarding")) {
+  if (!hasValidSession && pathname.startsWith("/api/onboarding")) {
     if (isPublicApiOnboardingPath(pathname)) {
       return NextResponse.next();
     }
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!isLoggedIn && isProtectedAppPath(pathname)) {
+  if (!hasValidSession && isProtectedAppPath(pathname)) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = AppRoutes.home;
     redirectUrl.search = "";

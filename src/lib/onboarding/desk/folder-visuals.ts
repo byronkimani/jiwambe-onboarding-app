@@ -4,6 +4,7 @@ export const STAMP_BY_STATE: Record<
   ApplicationState,
   { label: string; colorClass: string }
 > = {
+  DRAFT: { label: "Draft", colorClass: "text-ink-soft border-line-strong" },
   OPS_REVIEW: { label: "Pending review", colorClass: "text-kraft-ink border-kraft-ink" },
   LMS_CREATED: { label: "Approved", colorClass: "text-accent border-accent" },
   AGREEMENT_SIGNED: { label: "Signed", colorClass: "text-accent border-accent" },

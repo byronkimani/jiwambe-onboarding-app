@@ -20,6 +20,9 @@ export function prevCaptureStage(
   return CAPTURE_STAGE_KEYS[idx - 1];
 }
 
-export function captureStagePath(stage: CaptureStageKey): string {
-  return captureStage(stage);
+export function captureStagePath(
+  stage: CaptureStageKey,
+  applicationRef?: string | null,
+): string {
+  return captureStage(stage, applicationRef ?? undefined);
 }

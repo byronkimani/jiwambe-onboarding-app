@@ -1,7 +1,7 @@
 import type { CaptureStageKey } from "@/lib/global/shared/routes";
-import { isReadinessComplete } from "@/lib/onboarding/capture/readiness";
 import type { CaptureFormState } from "@/lib/onboarding/capture/types";
 import { CAPTURE_STAGES } from "@/lib/onboarding/capture/stages";
+import { isCaptureStageComplete } from "@/lib/onboarding/capture/stage-validation";
 
 function stageIndex(key: CaptureStageKey): number {
   return CAPTURE_STAGES.findIndex((s) => s.key === key);
@@ -14,20 +14,11 @@ export function captureStageCompleteMap(
   const currentIdx = stageIndex(current);
   const map: Partial<Record<CaptureStageKey, boolean>> = {};
 
-  const checks: Partial<Record<CaptureStageKey, boolean>> = {
-    readiness: isReadinessComplete(form.readiness),
-    lookup: Boolean(form.customerFound),
-    identity: Boolean(form.name && form.phone && form.idNo),
-    dl: Boolean(form.dlSituation),
-    cogc: Boolean(form.cogcSituation),
-    references:
-      form.refConsent &&
-      form.references.every((r) => r.name.trim().length > 0),
-    model: Boolean(form.opModel),
-    product: Boolean(form.productId && form.stkVerified),
-    bike: Boolean(form.bikeReg),
-    review: false,
-  };
+  const checks: Partial<Record<CaptureStageKey, boolean>> = {};
+  for (const stage of CAPTURE_STAGES) {
+    checks[stage.key] =
+      stage.key === "review" ? false : isCaptureStageComplete(stage.key, form);
+  }
 
   for (const stage of CAPTURE_STAGES) {
     const idx = stageIndex(stage.key);

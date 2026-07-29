@@ -21,6 +21,7 @@ describe("application-helpers", () => {
   it("partitions desk lists", () => {
     expect(isLiveDeskState("OPS_REVIEW")).toBe(true);
     expect(isDraftState("PAUSED")).toBe(true);
+    expect(isDraftState("DRAFT")).toBe(true);
     expect(isHistoryState("ACTIVE_LOAN")).toBe(true);
   });
 });

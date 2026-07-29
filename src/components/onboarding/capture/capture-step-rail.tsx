@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { CaptureStageKey } from "@/lib/global/shared/routes";
 import { captureStage } from "@/lib/global/shared/routes";
 import { CAPTURE_STAGES } from "@/lib/onboarding/capture/stages";
@@ -19,6 +19,9 @@ export function CaptureStepRail({
   unlocked = true,
 }: CaptureStepRailProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const applicationRef =
+    searchParams.get("application") ?? undefined;
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -38,7 +41,9 @@ export function CaptureStepRail({
               key={stage.key}
               type="button"
               disabled={locked}
-              onClick={() => router.push(captureStage(stage.key))}
+              onClick={() =>
+                router.push(captureStage(stage.key, applicationRef))
+              }
               className={cn(
                 "jw-tap mb-0.5 flex w-full items-center gap-3 rounded-xl border-none text-left",
                 collapsed ? "justify-center px-0 py-3" : "px-3 py-3",

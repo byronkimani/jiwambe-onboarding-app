@@ -44,6 +44,7 @@ export const AppRoutes = {
   apiOnboardingApplicationsCurrent: "/api/onboarding/applications/current",
   apiOnboardingCatalogProducts: "/api/onboarding/catalog/products",
   apiOnboardingCatalogQuotes: "/api/onboarding/catalog/quotes",
+  apiOnboardingCustomersLookup: "/api/onboarding/customers/lookup",
   apiOnboardingInventory: "/api/onboarding/inventory",
   apiOnboardingDepositStk: "/api/onboarding/deposits/stk",
   apiOnboardingDepositValidate: "/api/onboarding/deposits/validate",
@@ -52,8 +53,16 @@ export const AppRoutes = {
 
 export type AppRoute = (typeof AppRoutes)[keyof typeof AppRoutes];
 
-export function captureStage(stage: CaptureStageKey): string {
-  return `${AppRoutes.capture}/${stage}`;
+export function captureStage(
+  stage: CaptureStageKey,
+  applicationRef?: string,
+): string {
+  const base = `${AppRoutes.capture}/${stage}`;
+  if (!applicationRef?.trim()) {
+    return base;
+  }
+  const params = new URLSearchParams({ application: applicationRef.trim() });
+  return `${base}?${params.toString()}`;
 }
 
 export function deskApplication(id: string): string {

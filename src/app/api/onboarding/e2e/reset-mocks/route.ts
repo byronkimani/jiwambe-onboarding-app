@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { isE2eMode } from "@/lib/global/shared/env";
+import { resetApplicationsMockState } from "@/mocks/applications-mock-state";
+import { resetDepositsMockState } from "@/mocks/deposits-mock-state";
 import { resetOfficerAuthMockState } from "@/mocks/officer-auth-mock-state";
 
 export async function POST() {
@@ -8,5 +10,7 @@ export async function POST() {
   }
 
   resetOfficerAuthMockState();
+  resetApplicationsMockState();
+  resetDepositsMockState();
   return NextResponse.json({ ok: true });
 }

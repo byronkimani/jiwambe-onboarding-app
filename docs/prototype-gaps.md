@@ -2,7 +2,7 @@
 
 **Status:** Active catalog  
 **Prototype:** [`prototype/`](prototype/) (split HTML + `js/*`)  
-**Last updated:** 2026-07-28
+**Last updated:** 2026-07-29
 
 Items below must be resolved or explicitly accepted before calling a phase **Done** in production code.
 
@@ -36,9 +36,9 @@ Items below must be resolved or explicitly accepted before calling a phase **Don
 | Gap | Prototype | Production target |
 |-----|-----------|-------------------|
 | Daily installment | `calcDaily()` in [`js/data.js`](prototype/js/data.js) / capture | **API quote only** — display BFF response |
-| Min deposit | `MIN_DEPOSIT` / `minDeposit()` client map | API rules by operating model |
-| STK / M-Pesa code | Simulated timeouts and confirm | Server validation only; UI shows BFF status |
-| Product catalog prices | Static `PRODUCTS` array | `GET` catalog from BFF |
+| Min deposit | `MIN_DEPOSIT` / `minDeposit()` client map | API rules by operating model — **partial** (client `MIN_DEPOSIT_KES` for stage gate; quotes from BFF) |
+| STK / M-Pesa code | Simulated timeouts and confirm | **Partial (demo)** — BFF `POST …/deposits/stk` + `…/validate`, MSW updates `financing.depositPayment`; UI state machine in `product-deposit-stk-panel.tsx` |
+| Product catalog prices | Static `PRODUCTS` array | **Partial (demo)** — `GET /api/onboarding/catalog/products` + MSW; quotes via catalog BFF |
 
 ---
 
@@ -68,7 +68,7 @@ Items below must be resolved or explicitly accepted before calling a phase **Don
 | Gap | Notes |
 |-----|--------|
 | Next.js routes | `/desk`, `/capture/*` shipped — **closed** |
-| Product quotes in capture | Pre-seeded `GET /api/onboarding/catalog/quotes` — not live catalog API |
+| Product quotes in capture | `POST /api/onboarding/catalog/quotes` + fixture GET; see applications contract |
 | [`portal-migration.md`](portal-migration.md) | Documents **rider app**, not onboarding — do not use for this product |
 
 ---

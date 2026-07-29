@@ -68,7 +68,8 @@ export function ApplicationFolderCard({
     Boolean(meta?.action) &&
     app.state !== "ACTIVE_LOAN" &&
     app.state !== "DISQUALIFIED" &&
-    app.state !== "PAUSED";
+    app.state !== "PAUSED" &&
+    app.state !== "DRAFT";
   const clickable = Boolean(action);
 
   function handleOpen() {
@@ -112,7 +113,7 @@ export function ApplicationFolderCard({
             <span className="h-[5px] w-[5px] animate-pulse rounded-full bg-mint" />
             ACTION NEEDED
           </div>
-        ) : app.state === "PAUSED" ? (
+        ) : app.state === "PAUSED" || app.state === "DRAFT" ? (
           <div
             className={cn(
               "rounded-t-[7px] bg-amber font-extrabold tracking-wide text-white",

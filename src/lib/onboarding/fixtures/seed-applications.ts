@@ -1,4 +1,7 @@
 import type { OnboardingApplication } from "@/lib/onboarding/types";
+import type { OnboardingApplicationResource } from "@/lib/onboarding/application-resource";
+import { deskCardToApplicationResource } from "@/lib/onboarding/desk-card-to-application-resource";
+import { SAMPLE_APPLICATION_RESOURCE } from "@/lib/onboarding/fixtures/sample-application-resource";
 
 const SEED_APPLICATIONS: OnboardingApplication[] = [
   {
@@ -377,4 +380,15 @@ export function getSeedApplications(): OnboardingApplication[] {
 
 export function getSeedApplicationById(id: string): OnboardingApplication | undefined {
   return getSeedApplications().find((app) => app.id === id);
+}
+
+export function getSeedApplicationResourceById(
+  id: string,
+): OnboardingApplicationResource | undefined {
+  if (id === "A-1042") {
+    return { ...SAMPLE_APPLICATION_RESOURCE };
+  }
+  const card = getSeedApplicationById(id);
+  if (!card) return undefined;
+  return deskCardToApplicationResource(card);
 }

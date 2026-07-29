@@ -35,7 +35,7 @@ Side-by-side UI check (tablet **1024×768**):
 2. Run `pnpm dev` and sign in with the demo OTP above.
 3. Match desk kraft folders, agreement/release flows, and capture stages against the prototype modules in [`docs/prototype/js/`](docs/prototype/js/).
 
-E2E uses the **tablet** Playwright project first (`playwright.config.ts`); mobile is a secondary smoke viewport.
+E2E: **tablet** project for `shell.spec.ts`; **mobile-chrome** (390×844) for `capture-journey.spec.ts` per `AGENTS.md`.
 
 ## Environment variables
 
@@ -58,6 +58,8 @@ pnpm test --run
 pnpm test:e2e
 pnpm test:all
 ```
+
+`pnpm test:e2e` frees port **3100** (local only), then starts the E2E dev server and runs Playwright. Do not run `pnpm dev` on 3100 in another terminal at the same time.
 
 ## Stack
 

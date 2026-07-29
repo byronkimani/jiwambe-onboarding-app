@@ -6,8 +6,8 @@
 **Design reference:** [`prototype/`](prototype/) — SSOT for layout and copy  
 **Implementation plan:** [`implementation-plan.md`](implementation-plan.md)  
 **Implementation status:** [`implementation-status.md`](implementation-status.md)  
-**API sketch:** [`field-rider-api-contract.md`](field-rider-api-contract.md) — shared rider-domain **draft**; officer/onboarding endpoints **TBD** until backend contract  
-**Last updated:** 2026-07-24
+**API sketch:** [`onboarding-applications-api-contract.md`](onboarding-applications-api-contract.md) — officer applications (draft); [`field-rider-api-contract.md`](field-rider-api-contract.md) — rider self-serve sketch  
+**Last updated:** 2026-07-29
 
 ---
 
@@ -197,7 +197,7 @@ Implemented as shells in Phase 2 (see [`implementation-plan.md`](implementation-
 | `/offline` | No connection |
 | `/account-blocked` | Agent account disabled |
 
-**BFF:** `/api/onboarding/*` keys in [`routes.ts`](../src/lib/global/shared/routes.ts); upstream paths follow [`field-rider-api-contract.md`](field-rider-api-contract.md) until a dedicated onboarding contract ships.
+**BFF:** `/api/onboarding/*` keys in [`routes.ts`](../src/lib/global/shared/routes.ts); officer applications per [`onboarding-applications-api-contract.md`](onboarding-applications-api-contract.md).
 
 ---
 

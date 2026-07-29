@@ -126,6 +126,9 @@ List financiable bikes.
 
 ## 4. Applications
 
+> **Officer field capture** (onboarding agents, in-person): see [`onboarding-applications-api-contract.md`](onboarding-applications-api-contract.md).  
+> This section describes **rider self-serve** applications.
+
 ### POST `/riders/applications`
 
 Multipart or JSON — mirrors prospect form sections.
