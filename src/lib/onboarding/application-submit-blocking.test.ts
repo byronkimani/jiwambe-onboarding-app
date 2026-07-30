@@ -22,21 +22,26 @@ describe("blockingIssuesForSubmit", () => {
     const resource = {
       ...SAMPLE_APPLICATION_RESOURCE,
       lifecycleState: "DRAFT" as const,
+      leadId: "lead_test",
+      leadSource: "PORTAL",
       references: {
         customerConsent: true,
         entries: [
           {
             name: "Ref One",
+            nationalId: "12345678",
             phone: "+254712345678",
             relationship: "sibling",
           },
           {
             name: "Ref Two",
+            nationalId: "23456789",
             phone: "+254712345679",
             relationship: "friend",
           },
           {
             name: "Ref Three",
+            nationalId: "34567890",
             phone: "+254712345670",
             relationship: "colleague",
           },

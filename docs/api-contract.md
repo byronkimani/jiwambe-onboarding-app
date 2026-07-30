@@ -34,7 +34,8 @@ This is the **only** API contract for this repository. The browser calls **Next.
 | `POST /api/onboarding/auth/password/reset` | `POST /onboarding/auth/password/reset` | ✅ | |
 | `POST /api/onboarding/auth/password/reset/password` | `POST /onboarding/auth/password/reset/password` | ✅ | |
 | *(server only)* | `POST /onboarding/auth/otp/verify` | ✅ | Auth.js `authorize()` only — **no** public BFF route |
-| *(server only)* | `POST /onboarding/auth/refresh` | ✅ | Auth.js `jwt` callback only |
+| *(server only)* | `POST /onboarding/auth/refresh` | ✅ | Auth.js `jwt` callback only — see [Token refresh](#token-refresh) |
+| `GET /api/onboarding/agents/profile` | `GET /onboarding/agents/profile` | ✅ | Officer chrome + profile sheet |
 | `GET/POST/PATCH /api/onboarding/applications` | `/onboarding/applications` | ✅ | |
 | `GET /api/onboarding/applications/current` | `/onboarding/applications/current` | ✅ | |
 | `GET/PATCH /api/onboarding/applications/:id` | `/onboarding/applications/:id` | ✅ | PATCH requires `version` |
@@ -48,9 +49,9 @@ This is the **only** API contract for this repository. The browser calls **Next.
 | `GET /api/inventory` | `GET /inventory` | ✅ | Optional `?dealershipId=` |
 | `POST /api/payments/stk` | `POST /payments/stk` | ✅ | |
 | `POST /api/payments/validate` | `POST /payments/validate` | ✅ | |
+| `POST /api/onboarding/applications/:id/documents/init` | same | ✅ | Presigned upload — client PUT |
+| `POST /api/onboarding/applications/:id/documents/:documentId/complete` | same | ✅ | Marks document ready on resource |
 | `GET /api/onboarding/health` | — | — | BFF-only `{ ok: true }` |
-| `POST …/documents/init` | planned | ❌ | UI placeholders |
-| `POST …/documents/:id/complete` | planned | ❌ | |
 
 Route constants: [`routes.ts`](../src/lib/global/shared/routes.ts).
 
@@ -75,7 +76,44 @@ Email + password, then SMS OTP. Distinct from rider phone OTP in **`jiwambe-ride
 
 Common errors: `invalid_credentials` (401), `account_blocked` (403), `invalid_otp` (401, optional `retries_remaining`), `rate_limited` (429), `otp_expired` (410), `activation_expired` / `reset_expired` (410).
 
-**Demo (MSW):** `john@jiwambe.com` / `demo12345` → OTP `123456`.
+**Demo (MSW only):** `john@jiwambe.com` / `demo12345` → OTP `123456`. Do not use in production; credentials exist only in MSW mock state.
+
+### Token refresh
+
+| Rule | Detail |
+|------|--------|
+| Where refresh runs | Auth.js `jwt` callback only (`refreshOfficerJwtIfNeeded`) |
+| BFF / `upstreamRequest()` | Attaches current access token; **never** refreshes |
+| Trigger | Access token within 60s of expiry (`accessTokenNeedsRefresh`) |
+| Upstream | `POST /onboarding/auth/refresh` with `refresh_token` |
+| Success | Rotated `access_token`, optional `refresh_token`, updated `expires_in` |
+| Failure | JWT `error: RefreshError` → `proxy.ts` redirects to `/?sessionExpired=1`; BFF returns **401** |
+
+Manual QA (MSW): set `expires_in: 1` on OTP verify, wait, then call a protected BFF route — request should still succeed after silent refresh.
+
+---
+
+## Officer profile
+
+`GET /onboarding/agents/profile` (authenticated) — officer chrome, profile sheet, dealership scoping for inventory.
+
+| Field | Type | Notes |
+|-------|------|--------|
+| `id` | string | Officer id |
+| `name` | string | Display name |
+| `role` | string | e.g. Field Officer |
+| `dealership` | string | Display name |
+| `dealershipId` | string? | For `GET /inventory?dealershipId=` |
+| `phone` | string | Wire format |
+| `email` | string | Login email |
+| `registeredPhone` | string | Masked display |
+| `nationalIdMask` | string | e.g. `•••• 1234` |
+| `deviceLabel` | string | Tablet label |
+| `lastSignIn` | string | Human-readable |
+
+BFF: `GET /api/onboarding/agents/profile` → `{ profile }`. Profile is **not** stored on Auth.js session (tokens only in JWT).
+
+Upstream enforces `assignment.officerId` / `dealershipId` on application access (403 when mismatched).
 
 ---
 
@@ -98,15 +136,21 @@ Common errors: `invalid_credentials` (401), `account_blocked` (403), `invalid_ot
 
 Desk cards are a UI projection: [`map-resource-to-desk-card.ts`](../src/lib/onboarding/map-resource-to-desk-card.ts).
 
-### Documents (planned)
+### Documents
 
 Inline documents on the resource with `url`, `status` (`uploading` | `ready` | `failed` | `rejected`).
 
-1. `POST /onboarding/applications/:id/documents/init`
-2. Client PUT to presigned `uploadUrl`
-3. `POST /onboarding/applications/:id/documents/:documentId/complete`
+1. `POST /onboarding/applications/:id/documents/init` — body: `{ purpose, contentType, byteSize }`
+2. Client **PUT** file bytes to presigned `uploadUrl` (not through BFF or Server Actions)
+3. `POST /onboarding/applications/:id/documents/:documentId/complete` — returns `{ application }`
 
-Not wired in BFF/MSW yet — capture uses photo placeholders.
+Purposes: `id_front`, `id_back`, `kra_certificate`, `selfie`, `dl_front`, `dl_back`, `pdl_document`, `dl_peleza_report`, `cogc_certificate`, `cogc_peleza_report`, `consent_document`, `business_registration`, `handover_photo`.
+
+Capture stages upload identity, DL, COGC, and model documents via this flow (conditional on stage answers). Real presigned storage, virus scan, and OCR hooks are upstream.
+
+### Desk queue sync
+
+Tablet polls `GET /onboarding/applications` every **60s** (queue mode), refreshes on tab focus/visibility, and exposes a manual **Refresh worklist** control. Demo advance buttons remain for MSW demos (`TODO(prod): remove when CRM drives lifecycle`).
 
 ---
 
@@ -355,3 +399,23 @@ Statuses: `verified` | `pending` | `failed`.
 ## Agreement and release
 
 Desk flows (`/desk/applications/[id]/agreement`, `…/release`) are **demo UI** with fixture data. Dedicated upstream ceremony APIs are **not** wired yet — state transitions after `LMS_CREATED` are driven by MSW seeds / CRM in production.
+
+---
+
+## Security (app layer)
+
+| Control | Status |
+|---------|--------|
+| `Content-Security-Policy` | Shipped — tune `DOCUMENT_UPLOAD_CONNECT_SRC` for presigned storage hosts; production tightening (drop `unsafe-eval`) and nonces (drop `unsafe-inline`) planned |
+| `Permissions-Policy` | Shipped — `camera=(self)` for tablet capture |
+| E2E mock reset | `E2E=1`, `NODE_ENV !== production`; optional `E2E_RESET_SECRET` header |
+| Open redirect guard | `sanitize-callback-url.ts` |
+| CI dependency audit | Shipped — `pnpm audit --audit-level=high` in CI |
+| BFF edge rate limits | **Planned** — Upstash Redis sliding window on public auth BFF routes; upstream 429 still forwarded when present |
+| Client session recovery | Shipped — `bffFetch()` on protected BFF paths → sign out + `/?sessionExpired=1` |
+| CSP nonces | **Planned** — per-request nonce via middleware; replace `'unsafe-inline'` on `script-src` / `style-src` for inline Next.js output |
+| HSTS / WAF rate limits | Deploy layer (documented, not in repo) |
+
+### Authorization
+
+Protected upstream calls use `Authorization: Bearer <access_token>`. The platform API derives the officer from the token and enforces assignment / dealership scope (403 on mismatch). BFF may pass `dealershipId` as a query hint (e.g. inventory); upstream must not trust client-supplied ids over the token.

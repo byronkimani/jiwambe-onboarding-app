@@ -3,24 +3,17 @@ import { parseKenyaPhoneForSubmit } from "@/lib/global/auth/normalize-phone";
 import { CATALOG_PRODUCTS } from "@/lib/onboarding/fixtures/capture-fixtures";
 import { findInventoryItemByRegistration } from "@/lib/onboarding/inventory/inventory-catalog";
 import type { CaptureFormState } from "@/lib/onboarding/capture/types";
+import { patchDocumentField } from "@/lib/onboarding/capture/capture-document-patch";
+import type { LookupSelection } from "@/lib/onboarding/capture/form-to-resource-patch";
 import type { patchApplicationRequestSchema } from "@/lib/onboarding/schemas/application-schemas";
 import type { z } from "zod";
 import { normalizeNationalIdDigits } from "@/lib/onboarding/validation/national-id";
-import type { LookupSelection } from "@/lib/onboarding/capture/form-to-resource-patch";
 
 type PatchBody = z.infer<typeof patchApplicationRequestSchema>;
 
 function wirePhone(raw: string): string | undefined {
   const parsed = parseKenyaPhoneForSubmit(raw);
   return parsed.ok ? parsed.wire : undefined;
-}
-
-function placeholderDoc(documentId: string, url: string) {
-  return {
-    documentId,
-    url,
-    status: "ready" as const,
-  };
 }
 
 /** Best-effort partial PATCH for pause — no stage completion validation. */
@@ -56,39 +49,67 @@ export function draftPatchBodyForStage(
       if (phone) customer.phone = phone;
       const nid = normalizeNationalIdDigits(form.idNo);
       if (nid) customer.nationalId = nid;
+      if (form.kraPin.trim()) customer.kraPin = form.kraPin.trim().toUpperCase();
       if (form.county.trim()) {
         customer.address = { county: form.county.trim() };
       }
-      if (form.idPhotoFront) {
-        customer.idFront = placeholderDoc("doc_id_front", form.idPhotoFront);
-      }
-      if (form.selfiePhoto) {
-        customer.selfie = placeholderDoc("doc_selfie", form.selfiePhoto);
-      }
+      const idFront = patchDocumentField(
+        form.idPhotoFrontDocId,
+        form.idPhotoFront,
+      );
+      if (idFront) customer.idFront = idFront;
+      const idBack = patchDocumentField(form.idPhotoBackDocId, form.idPhotoBack);
+      if (idBack) customer.idBack = idBack;
+      const kraCertificate = patchDocumentField(
+        form.kraCertificateDocId,
+        form.kraCertificatePhoto,
+      );
+      if (kraCertificate) customer.kraCertificate = kraCertificate;
+      const selfie = patchDocumentField(form.selfiePhotoDocId, form.selfiePhoto);
+      if (selfie) customer.selfie = selfie;
       if (Object.keys(customer).length === 0) return null;
       return { ...base, customer };
     }
     case "dl": {
       if (!form.dlSituation && !form.dlNumber.trim()) return null;
-      return {
-        ...base,
-        drivingLicence: {
-          licenceNumber: form.dlNumber.trim() || undefined,
-          isProvisional: form.dlSituation === "pdl" ? true : undefined,
-        },
-      };
+      const drivingLicence: NonNullable<PatchBody["drivingLicence"]> = {};
+      if (form.dlNumber.trim()) {
+        drivingLicence.licenceNumber = form.dlNumber.trim();
+      }
+      if (form.dlSituation === "pdl") drivingLicence.isProvisional = true;
+      const front = patchDocumentField(form.dlFrontDocId, form.dlFrontPhoto);
+      if (front) drivingLicence.front = front;
+      const back = patchDocumentField(form.dlBackDocId, form.dlBackPhoto);
+      if (back) drivingLicence.back = back;
+      const pdlDocument = patchDocumentField(
+        form.pdlDocumentDocId,
+        form.pdlDocumentPhoto,
+      );
+      if (pdlDocument) drivingLicence.pdlDocument = pdlDocument;
+      const pelezaReport = patchDocumentField(
+        form.dlPelezaReportDocId,
+        form.dlPelezaReportPhoto,
+      );
+      if (pelezaReport) drivingLicence.pelezaReport = pelezaReport;
+      return { ...base, drivingLicence };
     }
     case "cogc": {
       if (!form.cogcSituation) return null;
-      return {
-        ...base,
-        goodConduct: {
-          issuedOn:
-            form.cogcSituation === "have"
-              ? new Date().toISOString().slice(0, 10)
-              : undefined,
-        },
-      };
+      const goodConduct: NonNullable<PatchBody["goodConduct"]> = {};
+      if (form.cogcSituation === "have") {
+        goodConduct.issuedOn = new Date().toISOString().slice(0, 10);
+      }
+      const certificate = patchDocumentField(
+        form.cogcCertificateDocId,
+        form.cogcCertificatePhoto,
+      );
+      if (certificate) goodConduct.certificate = certificate;
+      const pelezaReport = patchDocumentField(
+        form.cogcPelezaReportDocId,
+        form.cogcPelezaReportPhoto,
+      );
+      if (pelezaReport) goodConduct.pelezaReport = pelezaReport;
+      return { ...base, goodConduct };
     }
     case "references": {
       const entries = form.references
@@ -113,16 +134,46 @@ export function draftPatchBodyForStage(
     case "model": {
       if (!form.opModel) return null;
       const type = form.opModel as "FLEET" | "STAGE" | "DELIVERY" | "PERSONAL";
-      return {
-        ...base,
-        operatingModel: {
-          type,
-          fleet: type === "FLEET" ? { boltDriverActive: true } : null,
-          stage: type === "STAGE" ? {} : null,
-          delivery: type === "DELIVERY" ? {} : null,
-          personal: type === "PERSONAL" ? {} : null,
-        },
+      const operatingModel: NonNullable<PatchBody["operatingModel"]> = {
+        type,
+        fleet: type === "FLEET" ? { boltDriverActive: true } : null,
+        stage: type === "STAGE" ? {} : null,
+        delivery:
+          type === "DELIVERY"
+            ? {
+                worksPlatform: form.worksPlatform || undefined,
+                platformName: form.platformName.trim() || undefined,
+                platformContact: form.platformContact.trim() || undefined,
+                verifyConsent: form.verifyConsent || undefined,
+                consentDocument: patchDocumentField(
+                  form.consentDocumentDocId,
+                  form.consentDocumentPhoto,
+                ),
+                businessRegistration: patchDocumentField(
+                  form.businessRegistrationDocId,
+                  form.businessRegistrationPhoto,
+                ),
+              }
+            : null,
+        personal:
+          type === "PERSONAL"
+            ? {
+                isEmployed: form.isEmployed || undefined,
+                employerName: form.employerName.trim() || undefined,
+                employerContact: form.employerContact.trim() || undefined,
+                verifyConsent: form.verifyConsent || undefined,
+                consentDocument: patchDocumentField(
+                  form.consentDocumentDocId,
+                  form.consentDocumentPhoto,
+                ),
+                businessRegistration: patchDocumentField(
+                  form.businessRegistrationDocId,
+                  form.businessRegistrationPhoto,
+                ),
+              }
+            : null,
       };
+      return { ...base, operatingModel };
     }
     case "product": {
       if (!form.productId && !form.stkVerified) return null;

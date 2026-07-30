@@ -1,5 +1,6 @@
 "use client";
 
+import { bffFetch } from "@/lib/global/client/bff-fetch";
 import { useEffect, useState } from "react";
 import { AppRoutes } from "@/lib/global/shared/routes";
 
@@ -20,7 +21,7 @@ export function usePricingRules() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(AppRoutes.apiCatalogPricingRules, {
+        const response = await bffFetch(AppRoutes.apiCatalogPricingRules, {
           credentials: "same-origin",
         });
         if (!response.ok) {

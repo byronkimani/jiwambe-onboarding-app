@@ -6,6 +6,7 @@ import {
 import { findInventoryItemByRegistration } from "@/lib/onboarding/inventory/inventory-catalog";
 import { isReadinessComplete } from "@/lib/onboarding/capture/readiness";
 import type { CaptureFormState } from "@/lib/onboarding/capture/types";
+import { patchDocumentField } from "@/lib/onboarding/capture/capture-document-patch";
 import {
   createApplicationRequestSchema,
   patchApplicationRequestSchema,
@@ -20,6 +21,22 @@ export function createApplicationBodyFromForm(form: CaptureFormState): CreateBod
   if (!isReadinessComplete(form.readiness)) {
     throw new Error("readiness incomplete");
   }
+
+  const mapped = {
+    hasId: form.readiness.hasId === true,
+    knowsKra: form.readiness.knowsKra === true,
+    dlKnown: form.readiness.dlKnown === true,
+    cogcKnown: form.readiness.cogcKnown === true,
+    hasFunds: form.readiness.hasFunds === true,
+    refsBriefed: form.readiness.refsBriefed === true,
+  };
+
+  if (!Object.values(mapped).every(Boolean)) {
+    throw new Error("readiness incomplete");
+  }
+
+  void mapped;
+
   return {
     readinessAttestations: {
       hasId: true,
@@ -28,6 +45,7 @@ export function createApplicationBodyFromForm(form: CaptureFormState): CreateBod
       cogcKnown: true,
       hasFunds: true,
       refsBriefed: true,
+      attestedAt: new Date().toISOString(),
     },
   };
 }
@@ -37,18 +55,72 @@ function wirePhone(raw: string): string | undefined {
   return parsed.ok ? parsed.wire : undefined;
 }
 
-function placeholderDoc(documentId: string, url: string) {
-  return {
-    documentId,
-    url,
-    status: "ready" as const,
-  };
-}
-
 export type LookupSelection = {
   leadId?: string | null;
   leadSource?: string | null;
 };
+
+function operatingModelPatch(form: CaptureFormState): PatchBody["operatingModel"] {
+  const type = form.opModel as "FLEET" | "STAGE" | "DELIVERY" | "PERSONAL";
+  if (!type) return undefined;
+
+  return {
+    type,
+    fleet:
+      type === "FLEET"
+        ? { boltDriverActive: form.boltActive === "yes" }
+        : null,
+    stage:
+      type === "STAGE"
+        ? {
+            stageName: form.stageName.trim() || undefined,
+            chairpersonName: form.chairName.trim() || undefined,
+            chairpersonPhone: form.chairPhone.trim() || undefined,
+            chairpersonCalled: form.chairCalled || undefined,
+            callOutcome:
+              form.chairOutcome === "confirmed" ||
+              form.chairOutcome === "unreachable" ||
+              form.chairOutcome === "denied"
+                ? form.chairOutcome
+                : undefined,
+          }
+        : null,
+    delivery:
+      type === "DELIVERY"
+        ? {
+            worksPlatform: form.worksPlatform || undefined,
+            platformName: form.platformName.trim() || undefined,
+            platformContact: form.platformContact.trim() || undefined,
+            verifyConsent: form.verifyConsent,
+            consentDocument: patchDocumentField(
+              form.consentDocumentDocId,
+              form.consentDocumentPhoto,
+            ),
+            businessRegistration: patchDocumentField(
+              form.businessRegistrationDocId,
+              form.businessRegistrationPhoto,
+            ),
+          }
+        : null,
+    personal:
+      type === "PERSONAL"
+        ? {
+            isEmployed: form.isEmployed || undefined,
+            employerName: form.employerName.trim() || undefined,
+            employerContact: form.employerContact.trim() || undefined,
+            verifyConsent: form.verifyConsent,
+            consentDocument: patchDocumentField(
+              form.consentDocumentDocId,
+              form.consentDocumentPhoto,
+            ),
+            businessRegistration: patchDocumentField(
+              form.businessRegistrationDocId,
+              form.businessRegistrationPhoto,
+            ),
+          }
+        : null,
+  };
+}
 
 export function patchBodyForStage(
   stage: CaptureStageKey,
@@ -82,13 +154,26 @@ export function patchBodyForStage(
           legalName: form.name.trim(),
           phone,
           nationalId: normalizeNationalIdDigits(form.idNo),
-          address: { county: form.county.trim() },
-          idFront: form.idPhotoFront
-            ? placeholderDoc("doc_id_front", form.idPhotoFront)
-            : null,
-          selfie: form.selfiePhoto
-            ? placeholderDoc("doc_selfie", form.selfiePhoto)
-            : null,
+          kraPin: form.kraPin.trim().toUpperCase() || undefined,
+          gender: form.gender.trim() || undefined,
+          dateOfBirth: form.dateOfBirth.trim() || undefined,
+          email: form.email.trim() || undefined,
+          address: {
+            county: form.county.trim(),
+            subCounty: form.subCounty.trim() || undefined,
+            area: form.area.trim() || undefined,
+            landmark: form.landmark.trim() || undefined,
+          },
+          idFront: patchDocumentField(
+            form.idPhotoFrontDocId,
+            form.idPhotoFront,
+          ),
+          idBack: patchDocumentField(form.idPhotoBackDocId, form.idPhotoBack),
+          kraCertificate: patchDocumentField(
+            form.kraCertificateDocId,
+            form.kraCertificatePhoto,
+          ),
+          selfie: patchDocumentField(form.selfiePhotoDocId, form.selfiePhoto),
         },
       };
     }
@@ -97,16 +182,57 @@ export function patchBodyForStage(
         ...base,
         drivingLicence: {
           licenceNumber: form.dlNumber.trim() || undefined,
-          isProvisional: form.dlSituation === "pdl",
+          isProvisional: form.dlSituation === "pdl" ? true : undefined,
+          sponsorshipRequested:
+            form.dlSituation === "none"
+              ? form.needsSponsorship === "yes"
+              : undefined,
+          preferredDrivingSchool:
+            form.dlSituation === "none" && form.preferredDrivingSchool.trim()
+              ? form.preferredDrivingSchool.trim()
+              : undefined,
+          front: patchDocumentField(form.dlFrontDocId, form.dlFrontPhoto),
+          back: patchDocumentField(form.dlBackDocId, form.dlBackPhoto),
+          pdlDocument: patchDocumentField(
+            form.pdlDocumentDocId,
+            form.pdlDocumentPhoto,
+          ),
+          pelezaReport: patchDocumentField(
+            form.dlPelezaReportDocId,
+            form.dlPelezaReportPhoto,
+          ),
         },
       };
-    case "cogc":
+    case "cogc": {
+      const cogcSituation = form.cogcSituation as
+        | "have"
+        | "fingerprints"
+        | "peleza"
+        | "none"
+        | "";
       return {
         ...base,
         goodConduct: {
-          issuedOn: form.cogcSituation === "have" ? new Date().toISOString().slice(0, 10) : undefined,
+          situation: cogcSituation || undefined,
+          issuedOn:
+            cogcSituation === "have"
+              ? new Date().toISOString().slice(0, 10)
+              : undefined,
+          certificate: patchDocumentField(
+            form.cogcCertificateDocId,
+            form.cogcCertificatePhoto,
+          ),
+          pelezaReport: patchDocumentField(
+            form.cogcPelezaReportDocId,
+            form.cogcPelezaReportPhoto,
+          ),
         },
+        operations:
+          cogcSituation === "fingerprints"
+            ? { flag: "COGC-pending" }
+            : undefined,
       };
+    }
     case "references":
       return {
         ...base,
@@ -116,21 +242,17 @@ export function patchBodyForStage(
             name: ref.name.trim(),
             phone: wirePhone(ref.phone) ?? ref.phone,
             relationship: ref.relationship.trim(),
+            nationalId: ref.nationalId.trim()
+              ? normalizeNationalIdDigits(ref.nationalId)
+              : undefined,
+            called: ref.called,
           })),
         },
       };
     case "model": {
-      const type = form.opModel as "FLEET" | "STAGE" | "DELIVERY" | "PERSONAL";
-      return {
-        ...base,
-        operatingModel: {
-          type,
-          fleet: type === "FLEET" ? { boltDriverActive: true } : null,
-          stage: type === "STAGE" ? {} : null,
-          delivery: type === "DELIVERY" ? {} : null,
-          personal: type === "PERSONAL" ? {} : null,
-        },
-      };
+      const operatingModel = operatingModelPatch(form);
+      if (!operatingModel) return null;
+      return { ...base, operatingModel };
     }
     case "product": {
       const product = CATALOG_PRODUCTS.find((p) => p.id === form.productId);
@@ -173,4 +295,14 @@ export function patchBodyForStage(
     default:
       return null;
   }
+}
+
+/** Minimal PATCH so consent/business uploads can resolve operating model on server. */
+export function patchBodyForOperatingModelType(
+  form: CaptureFormState,
+  version: number,
+): (Omit<PatchBody, "version"> & { version: number }) | null {
+  const operatingModel = operatingModelPatch(form);
+  if (!operatingModel?.type) return null;
+  return { version, operatingModel: { type: operatingModel.type } };
 }

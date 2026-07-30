@@ -307,6 +307,20 @@ paths:
         "410":
           $ref: "#/components/responses/ResetExpired"
 
+  /onboarding/agents/profile:
+    get:
+      tags: [OfficerAuth]
+      summary: Authenticated officer profile
+      responses:
+        "200":
+          description: Officer profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OfficerProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /onboarding/applications:
     get:
       tags: [Applications]
@@ -471,8 +485,8 @@ paths:
       - $ref: "#/components/parameters/ApplicationId"
     post:
       tags: [Applications]
-      summary: Init presigned document upload (planned)
-      x-implemented: false
+      summary: Init presigned document upload
+      x-implemented: true
       requestBody:
         required: true
         content:
@@ -519,8 +533,8 @@ paths:
           type: string
     post:
       tags: [Applications]
-      summary: Complete document upload (planned)
-      x-implemented: false
+      summary: Complete document upload
+      x-implemented: true
       responses:
         "200":
           description: Document ready
@@ -673,6 +687,12 @@ components:
       description: Application reference code or internal id
 
   responses:
+    Unauthorized:
+      description: Missing or invalid bearer token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
     NotFound:
       description: Not found
       content:
@@ -765,6 +785,44 @@ components:
                       type: string
 
   schemas:
+    OfficerProfile:
+      type: object
+      required:
+        - id
+        - name
+        - role
+        - dealership
+        - phone
+        - email
+        - registeredPhone
+        - nationalIdMask
+        - deviceLabel
+        - lastSignIn
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+        dealership:
+          type: string
+        dealershipId:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+        registeredPhone:
+          type: string
+        nationalIdMask:
+          type: string
+        deviceLabel:
+          type: string
+        lastSignIn:
+          type: string
+
     ErrorBody:
       type: object
       properties:

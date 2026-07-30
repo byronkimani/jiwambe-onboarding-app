@@ -4,7 +4,9 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { OnboardingApplicationResource } from "@/lib/onboarding/application-resource";
@@ -18,6 +20,7 @@ import {
 } from "@/lib/onboarding/capture/application-api";
 import {
   createApplicationBodyFromForm,
+  patchBodyForOperatingModelType,
   patchBodyForStage,
 } from "@/lib/onboarding/capture/form-to-resource-patch";
 import { draftPatchBodyForStage } from "@/lib/onboarding/capture/draft-patch-for-stage";
@@ -28,6 +31,28 @@ import {
   createEmptyCaptureForm,
   type CaptureFormState,
 } from "@/lib/onboarding/capture/types";
+import {
+  isCaptureDirty,
+  snapshotCaptureForm,
+} from "@/lib/onboarding/capture/capture-dirty-state";
+import {
+  allCaptureDocIdsFromForm,
+  formPatchForClearedDocument,
+  formPatchForUploadedDocument,
+  previewAndDocIdFromForm,
+} from "@/lib/onboarding/capture/capture-form-documents";
+import {
+  buildClearPatchesForPurposes,
+  getStaleDocumentPurposesAfterPatch,
+} from "@/lib/onboarding/capture/capture-document-requirements";
+import {
+  createEmptyDocumentUploadState,
+  type DocumentUploadState,
+  syncDocumentUploadStateFromForm,
+} from "@/lib/onboarding/capture/document-upload-state";
+import type { DocumentPurpose } from "@/lib/onboarding/documents/document-purposes";
+import { uploadApplicationDocument } from "@/lib/onboarding/documents/upload-application-document";
+import { apiPatchApplication } from "@/lib/onboarding/capture/application-api";
 
 type CaptureWizardContextValue = {
   form: CaptureFormState;
@@ -41,6 +66,8 @@ type CaptureWizardContextValue = {
   resumeError: string | null;
   apiError: string | null;
   conflictRecovered: boolean;
+  documentUploads: DocumentUploadState;
+  isDirty: boolean;
   setApiError: (message: string | null) => void;
   clearConflictRecovered: () => void;
   createApplicationFromReadiness: () => Promise<
@@ -49,6 +76,7 @@ type CaptureWizardContextValue = {
   patchApplicationForStage: (
     stage: CaptureStageKey,
   ) => Promise<{ ok: true; recovered?: boolean } | { ok: false }>;
+  saveDraftForStage: (stage: CaptureStageKey) => Promise<boolean>;
   pauseApplication: (stage: CaptureStageKey, reason: string) => Promise<boolean>;
   submitApplication: () => Promise<
     | { ok: true }
@@ -62,6 +90,9 @@ type CaptureWizardContextValue = {
     | { ok: false; message: string }
   >;
   syncFromResource: (resource: OnboardingApplicationResource) => void;
+  captureDocument: (purpose: DocumentPurpose, file: File) => void;
+  retryDocumentUpload: (purpose: DocumentPurpose) => void;
+  clearDocumentSlot: (purpose: DocumentPurpose) => void;
 };
 
 const CaptureWizardContext = createContext<CaptureWizardContextValue | null>(
@@ -74,6 +105,11 @@ export function CaptureWizardProvider({
   children: React.ReactNode;
 }) {
   const [form, setForm] = useState<CaptureFormState>(createEmptyCaptureForm);
+  const [savedFormSnapshot, setSavedFormSnapshot] =
+    useState<CaptureFormState | null>(null);
+  const [documentUploads, setDocumentUploads] = useState<DocumentUploadState>(
+    createEmptyDocumentUploadState,
+  );
   const [applicationId, setApplicationId] = useState<string | null>(null);
   const [referenceCode, setReferenceCode] = useState<string | null>(null);
   const [version, setVersion] = useState<number | null>(null);
@@ -82,19 +118,30 @@ export function CaptureWizardProvider({
   const [resumeError, setResumeError] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [conflictRecovered, setConflictRecovered] = useState(false);
+  const blobUrlsRef = useRef<Set<string>>(new Set());
+  const formRef = useRef(form);
+  const versionRef = useRef(version);
 
-  const patchForm = useCallback((patch: Partial<CaptureFormState>) => {
-    setForm((prev) => ({ ...prev, ...patch }));
+  useEffect(() => {
+    formRef.current = form;
+    versionRef.current = version;
+  }, [form, version]);
+
+  const trackBlobUrl = useCallback((url: string) => {
+    if (url.startsWith("blob:")) {
+      blobUrlsRef.current.add(url);
+    }
   }, []);
 
-  const resetForm = useCallback(() => {
-    setForm(createEmptyCaptureForm());
-    setApplicationId(null);
-    setReferenceCode(null);
-    setVersion(null);
-    setApiError(null);
-    setResumeError(null);
-    setConflictRecovered(false);
+  const revokeBlobUrl = useCallback((url: string | null | undefined) => {
+    if (url?.startsWith("blob:")) {
+      URL.revokeObjectURL(url);
+      blobUrlsRef.current.delete(url);
+    }
+  }, []);
+
+  const commitSavedSnapshot = useCallback((nextForm: CaptureFormState) => {
+    setSavedFormSnapshot(snapshotCaptureForm(nextForm));
   }, []);
 
   const syncFromResource = useCallback((resource: OnboardingApplicationResource) => {
@@ -103,12 +150,206 @@ export function CaptureWizardProvider({
     setVersion(resource.version);
   }, []);
 
+  const persistOperatingModelType = useCallback(
+    async (nextForm: CaptureFormState): Promise<boolean> => {
+      const ref = referenceCode;
+      const ver = versionRef.current;
+      if (!ref || ver === null || !nextForm.opModel) return true;
+      const body = patchBodyForOperatingModelType(nextForm, ver);
+      if (!body) return true;
+      const result = await apiPatchApplication(ref, body);
+      if (result.ok) {
+        syncFromResource(result.application);
+        return true;
+      }
+      return false;
+    },
+    [referenceCode, syncFromResource],
+  );
+
+  const patchForm = useCallback(
+    (patch: Partial<CaptureFormState>) => {
+      setForm((prev) => {
+        const stalePurposes = getStaleDocumentPurposesAfterPatch(prev, patch);
+        const clearPatch = buildClearPatchesForPurposes(stalePurposes);
+        for (const purpose of stalePurposes) {
+          const { preview } = previewAndDocIdFromForm(prev, purpose);
+          revokeBlobUrl(preview);
+          setDocumentUploads((uploadPrev) => ({
+            ...uploadPrev,
+            [purpose]: { status: "idle", pendingFile: null, error: null },
+          }));
+        }
+        const next = { ...prev, ...patch, ...clearPatch };
+        if (patch.opModel !== undefined && patch.opModel !== prev.opModel) {
+          void persistOperatingModelType(next);
+        }
+        return next;
+      });
+    },
+    [revokeBlobUrl, persistOperatingModelType],
+  );
+
+  const resetForm = useCallback(() => {
+    for (const url of blobUrlsRef.current) {
+      URL.revokeObjectURL(url);
+    }
+    blobUrlsRef.current.clear();
+    setForm(createEmptyCaptureForm());
+    setSavedFormSnapshot(null);
+    setDocumentUploads(createEmptyDocumentUploadState());
+    setApplicationId(null);
+    setReferenceCode(null);
+    setVersion(null);
+    setApiError(null);
+    setResumeError(null);
+    setConflictRecovered(false);
+  }, []);
+
   const loadFormFromResource = useCallback(
     (resource: OnboardingApplicationResource) => {
-      setForm(hydrateCaptureFormFromResource(resource));
+      const hydrated = hydrateCaptureFormFromResource(resource);
+      setForm(hydrated);
       syncFromResource(resource);
+      commitSavedSnapshot(hydrated);
+      setDocumentUploads(
+        syncDocumentUploadStateFromForm(allCaptureDocIdsFromForm(hydrated)),
+      );
     },
-    [syncFromResource],
+    [syncFromResource, commitSavedSnapshot],
+  );
+
+  const executeDocumentUpload = useCallback(
+    async (purpose: DocumentPurpose, file: File) => {
+      if (!referenceCode) return;
+
+      if (
+        (purpose === "consent_document" || purpose === "business_registration") &&
+        formRef.current.opModel
+      ) {
+        const persisted = await persistOperatingModelType(formRef.current);
+        if (!persisted) {
+          setDocumentUploads((prev) => ({
+            ...prev,
+            [purpose]: {
+              status: "failed",
+              pendingFile: file,
+              error: "Could not save operating model. Try again.",
+            },
+          }));
+          return;
+        }
+      }
+
+      setDocumentUploads((prev) => ({
+        ...prev,
+        [purpose]: {
+          status: "uploading",
+          pendingFile: file,
+          error: null,
+        },
+      }));
+
+      try {
+        const uploaded = await uploadApplicationDocument({
+          applicationId: referenceCode,
+          purpose,
+          file,
+        });
+
+        setForm((prev) => {
+          const { preview } = previewAndDocIdFromForm(prev, purpose);
+          revokeBlobUrl(preview);
+          return {
+            ...prev,
+            ...formPatchForUploadedDocument(
+              purpose,
+              uploaded.url,
+              uploaded.documentId,
+            ),
+          };
+        });
+
+        syncFromResource(uploaded.application);
+        setDocumentUploads((prev) => ({
+          ...prev,
+          [purpose]: {
+            status: "uploaded",
+            pendingFile: null,
+            error: null,
+          },
+        }));
+      } catch {
+        setDocumentUploads((prev) => ({
+          ...prev,
+          [purpose]: {
+            status: "failed",
+            pendingFile: file,
+            error: "Upload failed. Try again.",
+          },
+        }));
+      }
+    },
+    [referenceCode, syncFromResource, revokeBlobUrl, persistOperatingModelType],
+  );
+
+  const captureDocument = useCallback(
+    (purpose: DocumentPurpose, file: File) => {
+      const preview = URL.createObjectURL(file);
+      trackBlobUrl(preview);
+      const { preview: currentPreview } = previewAndDocIdFromForm(
+        formRef.current,
+        purpose,
+      );
+      revokeBlobUrl(currentPreview);
+      patchForm({
+        ...formPatchForClearedDocument(purpose),
+        ...formPatchForUploadedDocument(purpose, preview, null),
+      });
+
+      if (!referenceCode) {
+        setDocumentUploads((prev) => ({
+          ...prev,
+          [purpose]: {
+            status: "failed",
+            pendingFile: file,
+            error: "Start the application from readiness before uploading.",
+          },
+        }));
+        return;
+      }
+
+      void executeDocumentUpload(purpose, file);
+    },
+    [
+      referenceCode,
+      patchForm,
+      trackBlobUrl,
+      revokeBlobUrl,
+      executeDocumentUpload,
+    ],
+  );
+
+  const retryDocumentUpload = useCallback(
+    (purpose: DocumentPurpose) => {
+      const file = documentUploads[purpose].pendingFile;
+      if (!file || !referenceCode) return;
+      void executeDocumentUpload(purpose, file);
+    },
+    [documentUploads, referenceCode, executeDocumentUpload],
+  );
+
+  const clearDocumentSlot = useCallback(
+    (purpose: DocumentPurpose) => {
+      const { preview } = previewAndDocIdFromForm(formRef.current, purpose);
+      revokeBlobUrl(preview);
+      patchForm(formPatchForClearedDocument(purpose));
+      setDocumentUploads((prev) => ({
+        ...prev,
+        [purpose]: { status: "idle", pendingFile: null, error: null },
+      }));
+    },
+    [patchForm, revokeBlobUrl],
   );
 
   const resumeApplication = useCallback(
@@ -144,11 +385,12 @@ export function CaptureWizardProvider({
       return { ok: false as const };
     }
     syncFromResource(result.application);
+    commitSavedSnapshot(form);
     return {
       ok: true as const,
       referenceCode: result.application.referenceCode,
     };
-  }, [form, syncFromResource]);
+  }, [form, syncFromResource, commitSavedSnapshot]);
 
   const patchApplicationForStage = useCallback(
     async (stage: CaptureStageKey) => {
@@ -165,10 +407,10 @@ export function CaptureWizardProvider({
         referenceCode,
         version,
         form,
-        buildPatch: (patchVersion, patchForm) =>
-          patchBodyForStage(stage, patchForm, patchVersion, {
-            leadId: patchForm.selectedLeadId,
-            leadSource: patchForm.selectedLeadSource,
+        buildPatch: (patchVersion, patchFormState) =>
+          patchBodyForStage(stage, patchFormState, patchVersion, {
+            leadId: patchFormState.selectedLeadId,
+            leadSource: patchFormState.selectedLeadSource,
           }),
       });
 
@@ -180,20 +422,69 @@ export function CaptureWizardProvider({
       }
 
       if (result.skipped) {
+        commitSavedSnapshot(form);
         return { ok: true as const };
       }
 
       syncFromResource(result.application);
+      const nextForm = result.form ?? form;
       if (result.form) {
         setForm(result.form);
       }
-      const recovered = result.recoveredFromConflict;
-      if (recovered) {
+      commitSavedSnapshot(nextForm);
+      if (result.recoveredFromConflict) {
         setConflictRecovered(true);
       }
-      return { ok: true as const, recovered };
+      return { ok: true as const, recovered: result.recoveredFromConflict };
     },
-    [form, referenceCode, version, syncFromResource],
+    [form, referenceCode, version, syncFromResource, commitSavedSnapshot],
+  );
+
+  const saveDraftForStage = useCallback(
+    async (stage: CaptureStageKey) => {
+      if (!referenceCode || version === null) {
+        return true;
+      }
+
+      setPatching(true);
+      setApiError(null);
+      setConflictRecovered(false);
+
+      const result = await patchApplicationWithVersionRecovery({
+        referenceCode,
+        version,
+        form,
+        buildPatch: (patchVersion, patchFormState) =>
+          draftPatchBodyForStage(stage, patchFormState, patchVersion, {
+            leadId: patchFormState.selectedLeadId,
+            leadSource: patchFormState.selectedLeadSource,
+          }),
+      });
+
+      setPatching(false);
+
+      if (!result.ok) {
+        setApiError(result.message);
+        return false;
+      }
+
+      if (!result.skipped) {
+        syncFromResource(result.application);
+        const nextForm = result.form ?? form;
+        if (result.form) {
+          setForm(result.form);
+        }
+        commitSavedSnapshot(nextForm);
+        if (result.recoveredFromConflict) {
+          setConflictRecovered(true);
+        }
+      } else {
+        commitSavedSnapshot(form);
+      }
+
+      return true;
+    },
+    [form, referenceCode, version, syncFromResource, commitSavedSnapshot],
   );
 
   const pauseApplication = useCallback(
@@ -211,10 +502,10 @@ export function CaptureWizardProvider({
         referenceCode,
         version,
         form,
-        buildPatch: (patchVersion, patchForm) =>
-          draftPatchBodyForStage(stage, patchForm, patchVersion, {
-            leadId: patchForm.selectedLeadId,
-            leadSource: patchForm.selectedLeadSource,
+        buildPatch: (patchVersion, patchFormState) =>
+          draftPatchBodyForStage(stage, patchFormState, patchVersion, {
+            leadId: patchFormState.selectedLeadId,
+            leadSource: patchFormState.selectedLeadSource,
           }),
       });
 
@@ -309,6 +600,16 @@ export function CaptureWizardProvider({
     [referenceCode, resetForm],
   );
 
+  const isDirty = useMemo(
+    () =>
+      isCaptureDirty({
+        form,
+        savedFormSnapshot,
+        documentUploads,
+      }),
+    [form, savedFormSnapshot, documentUploads],
+  );
+
   const value = useMemo(
     () => ({
       form,
@@ -322,15 +623,21 @@ export function CaptureWizardProvider({
       resumeError,
       apiError,
       conflictRecovered,
+      documentUploads,
+      isDirty,
       setApiError,
       clearConflictRecovered,
       createApplicationFromReadiness,
       patchApplicationForStage,
+      saveDraftForStage,
       pauseApplication,
       submitApplication,
       disqualifyApplication,
       resumeApplication,
       syncFromResource,
+      captureDocument,
+      retryDocumentUpload,
+      clearDocumentSlot,
     }),
     [
       form,
@@ -344,14 +651,20 @@ export function CaptureWizardProvider({
       resumeError,
       apiError,
       conflictRecovered,
+      documentUploads,
+      isDirty,
       clearConflictRecovered,
       createApplicationFromReadiness,
       patchApplicationForStage,
+      saveDraftForStage,
       pauseApplication,
       submitApplication,
       disqualifyApplication,
       resumeApplication,
       syncFromResource,
+      captureDocument,
+      retryDocumentUpload,
+      clearDocumentSlot,
     ],
   );
 

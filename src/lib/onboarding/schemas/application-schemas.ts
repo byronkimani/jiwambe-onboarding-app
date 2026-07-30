@@ -89,7 +89,10 @@ const applicationDrivingLicenceSchema = z.object({
   isProvisional: z.boolean().optional(),
   front: onboardingDocumentSchema.nullable().optional(),
   back: onboardingDocumentSchema.nullable().optional(),
+  pdlDocument: onboardingDocumentSchema.nullable().optional(),
   pelezaReport: onboardingDocumentSchema.nullable().optional(),
+  sponsorshipRequested: z.boolean().optional(),
+  preferredDrivingSchool: z.string().optional(),
 });
 
 const applicationGoodConductSchema = z.object({
@@ -97,6 +100,15 @@ const applicationGoodConductSchema = z.object({
   pelezaReport: onboardingDocumentSchema.nullable().optional(),
   issuedOn: z.string().optional(),
   expiresOn: z.string().optional(),
+  situation: z.enum(["have", "fingerprints", "peleza", "none"]).optional(),
+});
+
+const applicationStageModelSchema = z.object({
+  stageName: z.string().optional(),
+  chairpersonName: z.string().optional(),
+  chairpersonPhone: z.string().optional(),
+  chairpersonCalled: z.boolean().optional(),
+  callOutcome: z.enum(["confirmed", "unreachable", "denied"]).optional(),
 });
 
 const referenceEntrySchema = z.object({
@@ -128,12 +140,33 @@ const operatingModelTypeSchema = z.enum([
   "PERSONAL",
 ]);
 
+const operatingModelDocumentFields = {
+  consentDocument: onboardingDocumentSchema.nullable().optional(),
+  businessRegistration: onboardingDocumentSchema.nullable().optional(),
+};
+
+const applicationDeliveryModelSchema = z.object({
+  worksPlatform: z.string().optional(),
+  platformName: z.string().optional(),
+  platformContact: z.string().optional(),
+  verifyConsent: z.boolean().optional(),
+  ...operatingModelDocumentFields,
+});
+
+const applicationPersonalModelSchema = z.object({
+  isEmployed: z.string().optional(),
+  employerName: z.string().optional(),
+  employerContact: z.string().optional(),
+  verifyConsent: z.boolean().optional(),
+  ...operatingModelDocumentFields,
+});
+
 const applicationOperatingModelSchema = z.object({
   type: operatingModelTypeSchema,
   fleet: z.object({ boltDriverActive: z.boolean() }).nullable().optional(),
-  stage: z.record(z.string(), z.unknown()).nullable().optional(),
-  delivery: z.record(z.string(), z.unknown()).nullable().optional(),
-  personal: z.record(z.string(), z.unknown()).nullable().optional(),
+  stage: applicationStageModelSchema.nullable().optional(),
+  delivery: applicationDeliveryModelSchema.nullable().optional(),
+  personal: applicationPersonalModelSchema.nullable().optional(),
 });
 
 const depositPaymentSchema = z.object({
@@ -164,6 +197,7 @@ const applicationBikeAssignmentSchema = z.object({
   insuranceSticker: z.string().nullable().optional(),
   stickerExpiry: z.string().nullable().optional(),
   holdAvailableUntil: z.string().nullable().optional(),
+  handoverPhoto: onboardingDocumentSchema.nullable().optional(),
 });
 
 const applicationSubmissionSchema = z.object({

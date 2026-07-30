@@ -6,6 +6,13 @@ allowBuilds:
   unrs-resolver: true
 minimumReleaseAgeExclude:
   - postcss@8.5.10
+  - brace-expansion@5.0.8
 overrides:
+  # GHSA-mh99-v99m-4gvg — keep in sync with `pnpm audit --fix` (patches all brace-expansion <=5.0.7).
+  brace-expansion@<=5.0.7: ^5.0.8
+  # minimatch@3 (ESLint @eslint/config-array) calls brace-expansion as a CJS function; v5 breaks it.
+  # Upgrade the consumer so the audit override above stays safe.
+  minimatch@3: 10.2.5
+  minimatch@3.1.5: 10.2.5
   postcss@<8.5.10: ^8.5.10
   sharp@<0.35.0: ^0.35.0

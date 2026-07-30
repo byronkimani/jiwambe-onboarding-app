@@ -13,8 +13,13 @@ import {
   submitApplicationRequestSchema,
 } from "@/lib/onboarding/schemas/application-schemas";
 import { blockingIssuesForSubmit } from "@/lib/onboarding/application-submit-blocking";
+import {
+  agreementActionSchema,
+  releaseCompleteRequestSchema,
+} from "@/lib/onboarding/schemas/ceremony-schemas";
+import { RELEASE_OTP_DEMO } from "@/lib/onboarding/flows/release-constants";
 import { normalizeNationalIdDigits } from "@/lib/onboarding/validation/national-id";
-import { parseKenyaPhoneForSubmit } from "@/lib/global/auth/normalize-phone";
+import { resolveKenyaPhoneWire } from "@/lib/global/auth/normalize-phone";
 
 export type ApplicationsMockState = {
   byReferenceCode: Map<string, OnboardingApplicationResource>;
@@ -377,9 +382,9 @@ function maskNationalIdForDisplay(idNo: string): string {
 }
 
 function maskPhoneForDisplay(phone: string): string {
-  const parsed = parseKenyaPhoneForSubmit(phone);
-  if (!parsed.ok) return phone;
-  const national = `0${parsed.wire.slice(3)}`;
+  const wire = resolveKenyaPhoneWire(phone);
+  if (!wire) return phone;
+  const national = `0${wire.slice(3)}`;
   return `${national.slice(0, 4)}•• ••• ${national.slice(-3)}`;
 }
 
@@ -398,9 +403,9 @@ export function mockCustomerLookup(body: {
     let nidMatch = false;
 
     if (body.phone) {
-      const query = parseKenyaPhoneForSubmit(body.phone);
-      const candidate = parseKenyaPhoneForSubmit(customer.phone);
-      if (query.ok && candidate.ok && query.wire === candidate.wire) {
+      const queryWire = resolveKenyaPhoneWire(body.phone);
+      const candidateWire = resolveKenyaPhoneWire(customer.phone);
+      if (queryWire && candidateWire && queryWire === candidateWire) {
         phoneMatch = true;
       }
     }
@@ -425,4 +430,120 @@ export function mockCustomerLookup(body: {
   }
 
   return { ok: true, matches };
+}
+
+const AGREEMENT_ALLOWED: OnboardingApplicationResource["lifecycleState"][] = [
+  "LMS_CREATED",
+  "AGREEMENT_SIGNED",
+];
+
+export type MockAgreementResult =
+  | { ok: true; application: OnboardingApplicationResource }
+  | { ok: false; status: number; error: string };
+
+export function mockAgreementAction(
+  idOrRef: string,
+  body: unknown,
+): MockAgreementResult {
+  const parsed = agreementActionSchema.safeParse(body);
+  if (!parsed.success) {
+    return { ok: false, status: 400, error: "invalid_body" };
+  }
+
+  const current = findApplicationByIdOrRef(idOrRef);
+  if (!current) {
+    return { ok: false, status: 404, error: "not_found" };
+  }
+
+  if (!AGREEMENT_ALLOWED.includes(current.lifecycleState)) {
+    return { ok: false, status: 409, error: "invalid_state" };
+  }
+
+  const now = new Date().toISOString();
+  let lifecycleState = current.lifecycleState;
+
+  if (parsed.data.action === "sign" || parsed.data.action === "send_sms") {
+    lifecycleState = "AGREEMENT_SIGNED";
+  }
+
+  const application: OnboardingApplicationResource = {
+    ...current,
+    lifecycleState,
+    version: current.version + 1,
+    operations: {
+      ...current.operations,
+      flag:
+        parsed.data.action === "generate"
+          ? "agreement-generated"
+          : current.operations.flag,
+    },
+    timestamps: { ...current.timestamps, updatedAt: now },
+  };
+
+  getApplicationsMockState().byReferenceCode.set(
+    application.referenceCode,
+    application,
+  );
+  return { ok: true, application };
+}
+
+export type MockReleaseOtpResult =
+  | { ok: true; sent: true }
+  | { ok: false; status: number; error: string };
+
+export function mockReleaseOtpSend(idOrRef: string): MockReleaseOtpResult {
+  const current = findApplicationByIdOrRef(idOrRef);
+  if (!current) {
+    return { ok: false, status: 404, error: "not_found" };
+  }
+  if (current.lifecycleState !== "READY_FOR_RELEASE") {
+    return { ok: false, status: 409, error: "invalid_state" };
+  }
+  return { ok: true, sent: true };
+}
+
+export type MockReleaseCompleteResult =
+  | { ok: true; application: OnboardingApplicationResource }
+  | { ok: false; status: number; error: string; message?: string };
+
+export function mockReleaseComplete(
+  idOrRef: string,
+  body: unknown,
+): MockReleaseCompleteResult {
+  const parsed = releaseCompleteRequestSchema.safeParse(body);
+  if (!parsed.success) {
+    return { ok: false, status: 400, error: "invalid_body" };
+  }
+
+  const current = findApplicationByIdOrRef(idOrRef);
+  if (!current) {
+    return { ok: false, status: 404, error: "not_found" };
+  }
+
+  if (current.lifecycleState !== "READY_FOR_RELEASE") {
+    return { ok: false, status: 409, error: "invalid_state" };
+  }
+
+  if (parsed.data.otp !== RELEASE_OTP_DEMO) {
+    return {
+      ok: false,
+      status: 422,
+      error: "invalid_otp",
+      message: "OTP does not match.",
+    };
+  }
+
+  const now = new Date().toISOString();
+  const application: OnboardingApplicationResource = {
+    ...current,
+    lifecycleState: "ACTIVE_LOAN",
+    version: current.version + 1,
+    timestamps: { ...current.timestamps, updatedAt: now },
+  };
+
+  getApplicationsMockState().byReferenceCode.set(
+    application.referenceCode,
+    application,
+  );
+  return { ok: true, application };
 }

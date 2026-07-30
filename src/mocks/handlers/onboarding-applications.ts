@@ -8,6 +8,9 @@ import {
   mockPauseApplication,
   mockSubmitApplication,
   mockDisqualifyApplication,
+  mockAgreementAction,
+  mockReleaseOtpSend,
+  mockReleaseComplete,
 } from "@/mocks/applications-mock-state";
 import { upstreamPath } from "@/mocks/handlers/upstream-path";
 
@@ -99,6 +102,49 @@ export const onboardingApplicationsHandlers = [
       const result = mockDisqualifyApplication(id, body);
       if (!result.ok) {
         return HttpResponse.json({ error: result.error }, { status: result.status });
+      }
+      return HttpResponse.json({ application: result.application });
+    },
+  ),
+
+  http.post(
+    upstreamPath("/onboarding/applications/:id/agreement"),
+    async ({ params, request }) => {
+      const id = String(params.id);
+      const body = await request.json();
+      const result = mockAgreementAction(id, body);
+      if (!result.ok) {
+        return HttpResponse.json({ error: result.error }, { status: result.status });
+      }
+      return HttpResponse.json({ application: result.application });
+    },
+  ),
+
+  http.post(
+    upstreamPath("/onboarding/applications/:id/release/otp"),
+    ({ params }) => {
+      const id = String(params.id);
+      const result = mockReleaseOtpSend(id);
+      if (!result.ok) {
+        return HttpResponse.json({ error: result.error }, { status: result.status });
+      }
+      return HttpResponse.json({ sent: true });
+    },
+  ),
+
+  http.post(
+    upstreamPath("/onboarding/applications/:id/release"),
+    async ({ params, request }) => {
+      const id = String(params.id);
+      const body = await request.json();
+      const result = mockReleaseComplete(id, body);
+      if (!result.ok) {
+        return HttpResponse.json(
+          result.message
+            ? { error: result.error, message: result.message }
+            : { error: result.error },
+          { status: result.status },
+        );
       }
       return HttpResponse.json({ application: result.application });
     },

@@ -5,9 +5,8 @@ import { useEffect, useState } from "react";
 import type { CaptureStageKey } from "@/lib/global/shared/routes";
 import { AppRoutes } from "@/lib/global/shared/routes";
 import { ReadinessStageBody } from "@/components/onboarding/capture/stages/readiness-stage-body";
-import {
-  PORTAL_CUSTOMERS,
-} from "@/lib/onboarding/fixtures/capture-fixtures";
+import { ModelStageBody } from "@/components/onboarding/capture/stages/model-stage-body";
+import { ExitCard } from "@/components/onboarding/capture/exit-card";
 import type { CaptureFormState } from "@/lib/onboarding/capture/types";
 import { validateCaptureStage } from "@/lib/onboarding/capture/stage-validation";
 import { useInventory } from "@/lib/onboarding/use-inventory";
@@ -22,7 +21,18 @@ import { nationalIdFormatErrorMessage } from "@/lib/onboarding/validation/nation
 import { apiCustomerLookup } from "@/lib/onboarding/capture/application-api";
 import { normalizeNationalIdDigits } from "@/lib/onboarding/validation/national-id";
 import { parseKenyaPhoneForSubmit } from "@/lib/global/auth/normalize-phone";
-import { PhotoSlot } from "@/components/onboarding/atoms/photo-slot";
+import { DocumentSlot } from "@/components/onboarding/atoms/document-slot";
+import type { DocumentPurpose } from "@/lib/onboarding/documents/document-purposes";
+import { kraPinFormatErrorMessage } from "@/lib/onboarding/capture/capture-document-requirements";
+import { REFERENCE_RELATIONSHIP_OPTIONS } from "@/lib/onboarding/capture/reference-options";
+import {
+  reviewChecklistItems,
+  reviewBlockingSummary,
+} from "@/lib/onboarding/capture/review-checklist";
+import type { CustomerLookupMatch } from "@/lib/onboarding/application-resource";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { CAPTURE_DOCUMENT_FORM_KEYS } from "@/lib/onboarding/capture/capture-form-documents";
 import { IdOcrPanel } from "@/components/onboarding/capture/id-ocr-panel";
 import { FaceMatchPanel } from "@/components/onboarding/capture/face-match-panel";
 import { ProtoBtn, ProtoField, ProtoInput } from "@/components/onboarding/atoms/proto-field";
@@ -39,7 +49,18 @@ export function CaptureStageBody({
   form,
   showValidation = false,
 }: CaptureStageBodyProps) {
-  const { patchForm, referenceCode, syncFromResource } = useCaptureWizard();
+  const {
+    patchForm,
+    referenceCode,
+    syncFromResource,
+    documentUploads,
+    captureDocument,
+    retryDocumentUpload,
+    clearDocumentSlot,
+    pauseApplication,
+    patching,
+  } = useCaptureWizard();
+  const router = useRouter();
   const {
     items: inventoryItems,
     rules: inventoryRules,
@@ -61,8 +82,7 @@ export function CaptureStageBody({
   });
   const [lookupQuery, setLookupQuery] = useState("");
   const [lookupMessage, setLookupMessage] = useState<string | null>(null);
-  const [scanning, setScanning] = useState(false);
-  const [anomalies, setAnomalies] = useState<string[] | null>(null);
+  const [lookupMatches, setLookupMatches] = useState<CustomerLookupMatch[]>([]);
 
   useEffect(() => {
     if (stage !== "product") return;
@@ -79,29 +99,48 @@ export function CaptureStageBody({
   const fieldErrors =
     stageValidation.ok === false ? stageValidation.fieldErrors : {};
 
-  const filteredPortal = PORTAL_CUSTOMERS.filter((c) => {
-    const q = lookupQuery.toLowerCase();
-    return (
-      !q ||
-      c.name.toLowerCase().includes(q) ||
-      c.phone.includes(q) ||
-      c.idNo.includes(q)
-    );
-  });
+  function docSlot(
+    purpose: DocumentPurpose,
+    label: string,
+    options?: { required?: boolean; preferCamera?: boolean },
+  ) {
+    const keys = CAPTURE_DOCUMENT_FORM_KEYS[purpose];
+    if (!keys) return null;
+    const preview = form[keys.preview] as string | null;
 
-  if (stage === "readiness") {
     return (
-      <ReadinessStageBody
-        form={form}
-        patchForm={patchForm}
+      <DocumentSlot
+        key={purpose}
+        label={label}
+        required={options?.required}
+        preferCamera={options?.preferCamera}
+        image={preview}
         showValidation={showValidation}
+        validationMessage={fieldErrors[String(keys.preview)]}
+        uploading={documentUploads[purpose].status === "uploading"}
+        uploadError={documentUploads[purpose].error}
+        captureDisabled={!referenceCode}
+        onCapture={(file) => captureDocument(purpose, file)}
+        onRetry={() => retryDocumentUpload(purpose)}
+        onRetake={() => clearDocumentSlot(purpose)}
       />
     );
+  }
+
+  async function pauseFromStage(reason: string) {
+    const ok = await pauseApplication(stage, reason);
+    if (!ok) {
+      toast.error("Could not pause application.");
+      return;
+    }
+    toast.success("Application paused — saved to drafts.");
+    router.push(AppRoutes.deskDrafts);
   }
 
   if (stage === "lookup") {
     async function runLookupSearch() {
       setLookupMessage(null);
+      setLookupMatches([]);
       const digits = normalizeNationalIdDigits(lookupQuery);
       const phoneParsed = parseKenyaPhoneForSubmit(lookupQuery);
       const body =
@@ -119,10 +158,11 @@ export function CaptureStageBody({
         setLookupMessage(result.message);
         return;
       }
+      setLookupMatches(result.matches);
       if (result.matches.length === 0) {
         setLookupMessage("No portal matches — use new customer below.");
       } else {
-        setLookupMessage(`${result.matches.length} match(es) from API.`);
+        setLookupMessage(`${result.matches.length} match(es) found.`);
       }
     }
 
@@ -136,30 +176,34 @@ export function CaptureStageBody({
           />
         </ProtoField>
         <ProtoBtn ghost small onClick={() => void runLookupSearch()}>
-          Search portal (API)
+          Search portal
         </ProtoBtn>
         {lookupMessage ? (
           <p className="text-sm text-ink-soft">{lookupMessage}</p>
         ) : null}
-        {filteredPortal.map((customer) => (
+        {lookupMatches.map((match) => (
           <button
-            key={customer.idNo}
+            key={match.leadId}
             type="button"
-            className="jw-tap w-full rounded-2xl border border-line bg-card p-4 text-left"
+            className={`jw-tap w-full rounded-2xl border p-4 text-left ${
+              form.selectedLeadId === match.leadId
+                ? "border-accent bg-accent/5"
+                : "border-line bg-card"
+            }`}
             onClick={() =>
               patchForm({
                 customerFound: "portal",
-                name: customer.name,
-                phone: customer.phone,
-                idNo: customer.idNo,
-                county: customer.county,
-                selectedLeadId: `lead_${customer.idNo.replace(/\s/g, "")}`,
-                selectedLeadSource: "PORTAL",
+                name: match.displayName,
+                selectedLeadId: match.leadId,
+                selectedLeadSource: match.source,
               })
             }
           >
-            <p className="font-bold text-ink">{customer.name}</p>
-            <p className="text-sm text-ink-soft">{customer.phone}</p>
+            <p className="font-bold text-ink">{match.displayName}</p>
+            <p className="text-sm text-ink-soft">{match.phoneMasked}</p>
+            {match.nationalIdMasked ? (
+              <p className="text-xs text-ink-faint">{match.nationalIdMasked}</p>
+            ) : null}
           </button>
         ))}
         <ProtoBtn
@@ -184,6 +228,16 @@ export function CaptureStageBody({
           message={fieldErrors.customerFound}
         />
       </div>
+    );
+  }
+
+  if (stage === "readiness") {
+    return (
+      <ReadinessStageBody
+        form={form}
+        patchForm={patchForm}
+        showValidation={showValidation}
+      />
     );
   }
 
@@ -213,6 +267,46 @@ export function CaptureStageBody({
             onChange={(idNo) => patchForm({ idNo })}
           />
         </ProtoField>
+        <ProtoField label="Gender" required>
+          <select
+            className="jw-focus w-full rounded-[10px] border-[1.5px] border-line bg-card px-3.5 py-3"
+            value={form.gender}
+            onChange={(e) => patchForm({ gender: e.target.value })}
+          >
+            <option value="">Select…</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+          <CaptureInlineError
+            show={showValidation}
+            message={fieldErrors.gender}
+          />
+        </ProtoField>
+        <ProtoField label="Date of birth" required>
+          <ProtoInput
+            type="date"
+            value={form.dateOfBirth}
+            onChange={(e) => patchForm({ dateOfBirth: e.target.value })}
+          />
+          <CaptureInlineError
+            show={showValidation}
+            message={fieldErrors.dateOfBirth}
+          />
+        </ProtoField>
+        <ProtoField label="Email">
+          <ValidatedTextInput
+            value={form.email}
+            showValidation={showValidation}
+            validate={(v) => {
+              if (!v.trim()) return null;
+              return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())
+                ? null
+                : "Enter a valid email address.";
+            }}
+            onChange={(email) => patchForm({ email })}
+          />
+        </ProtoField>
         <ProtoField label="County" required>
           <ValidatedTextInput
             value={form.county}
@@ -221,22 +315,45 @@ export function CaptureStageBody({
             onChange={(county) => patchForm({ county })}
           />
         </ProtoField>
-        <PhotoSlot
-          label="National ID (front)"
-          required
-          image={form.idPhotoFront}
-          showValidation={showValidation}
-          onCapture={(url) => patchForm({ idPhotoFront: url })}
-          onRetake={() => patchForm({ idPhotoFront: null })}
-        />
-        <PhotoSlot
-          label="Customer selfie"
-          required
-          image={form.selfiePhoto}
-          showValidation={showValidation}
-          onCapture={(url) => patchForm({ selfiePhoto: url })}
-          onRetake={() => patchForm({ selfiePhoto: null })}
-        />
+        <ProtoField label="Sub-county">
+          <ProtoInput
+            value={form.subCounty}
+            onChange={(e) => patchForm({ subCounty: e.target.value })}
+          />
+        </ProtoField>
+        <ProtoField label="Area / estate">
+          <ProtoInput
+            value={form.area}
+            onChange={(e) => patchForm({ area: e.target.value })}
+          />
+        </ProtoField>
+        <ProtoField label="Landmark">
+          <ProtoInput
+            value={form.landmark}
+            onChange={(e) => patchForm({ landmark: e.target.value })}
+          />
+        </ProtoField>
+        <ProtoField label="KRA PIN" required>
+          <ValidatedTextInput
+            value={form.kraPin}
+            showValidation={showValidation}
+            validate={(v) => kraPinFormatErrorMessage(v)}
+            onChange={(kraPin) => patchForm({ kraPin: kraPin.toUpperCase() })}
+          />
+        </ProtoField>
+        {docSlot("id_front", "National ID (front)", {
+          required: true,
+          preferCamera: true,
+        })}
+        {docSlot("id_back", "National ID (back)", {
+          required: true,
+          preferCamera: true,
+        })}
+        {docSlot("kra_certificate", "KRA PIN certificate", { required: true })}
+        {docSlot("selfie", "Client photo", {
+          required: true,
+          preferCamera: true,
+        })}
         <div className="md:col-span-2">
           <IdOcrPanel
             onApplied={(fields) =>
@@ -281,28 +398,144 @@ export function CaptureStageBody({
             />
           </ProtoField>
         ) : null}
+        {form.dlSituation === "smart" ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            {docSlot("dl_front", "Licence — front", {
+              required: true,
+              preferCamera: true,
+            })}
+            {docSlot("dl_back", "Licence — back", {
+              required: true,
+              preferCamera: true,
+            })}
+          </div>
+        ) : null}
+        {form.dlSituation === "pdl" ? (
+          docSlot("pdl_document", "PDL document", {
+            required: true,
+            preferCamera: true,
+          })
+        ) : null}
+        {form.dlSituation === "processing" ? (
+          <div className="space-y-3">
+            {docSlot("dl_front", "Licence — front", {
+              required: true,
+              preferCamera: true,
+            })}
+            {docSlot("dl_peleza_report", "Peleza report — driving licence", {
+              required: true,
+            })}
+          </div>
+        ) : null}
+        {form.dlSituation === "none" ? (
+          <div className="space-y-3">
+            <ProtoField label="Needs driving-school sponsorship?" required>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { value: "yes", label: "Yes — refer to driving school" },
+                  { value: "no", label: "No sponsorship needed" },
+                ].map((opt) => (
+                  <ProtoBtn
+                    key={opt.value}
+                    ghost={form.needsSponsorship !== opt.value}
+                    className={
+                      form.needsSponsorship === opt.value
+                        ? "bg-accent text-white"
+                        : ""
+                    }
+                    onClick={() => patchForm({ needsSponsorship: opt.value })}
+                  >
+                    {opt.label}
+                  </ProtoBtn>
+                ))}
+              </div>
+            </ProtoField>
+            {form.needsSponsorship === "yes" ? (
+              <ProtoField label="Preferred driving school (optional)">
+                <ProtoInput
+                  value={form.preferredDrivingSchool}
+                  onChange={(e) =>
+                    patchForm({ preferredDrivingSchool: e.target.value })
+                  }
+                />
+              </ProtoField>
+            ) : null}
+            <ExitCard
+              title="No driving licence"
+              body="Customer cannot continue without a licence. Save as paused and refer to driving-school sponsorship or revisit when they obtain a DL."
+              steps={[
+                "Explain Jiwambe driving-school referral options.",
+                "Save draft — application moves to your paused list.",
+              ]}
+              actionLabel="Save draft & pause"
+              loading={patching}
+              onAction={() =>
+                void pauseFromStage(
+                  "DL blocked — customer has no driving licence.",
+                )
+              }
+            />
+          </div>
+        ) : null}
       </div>
     );
   }
 
   if (stage === "cogc") {
     return (
-      <ProtoField label="Certificate of Good Conduct" required>
-        <select
-          className="jw-focus w-full rounded-[10px] border-[1.5px] border-line bg-card px-3.5 py-3"
-          value={form.cogcSituation}
-          onChange={(e) => patchForm({ cogcSituation: e.target.value })}
-        >
-          <option value="">Select…</option>
-          <option value="have">Have certificate</option>
-          <option value="fingerprints">Fingerprints taken</option>
-          <option value="none">Not started</option>
-        </select>
-        <CaptureInlineError
-          show={showValidation}
-          message={fieldErrors.cogcSituation}
-        />
-      </ProtoField>
+      <div className="mt-4 space-y-3">
+        <ProtoField label="Certificate of Good Conduct" required>
+          <select
+            className="jw-focus w-full rounded-[10px] border-[1.5px] border-line bg-card px-3.5 py-3"
+            value={form.cogcSituation}
+            onChange={(e) => patchForm({ cogcSituation: e.target.value })}
+          >
+            <option value="">Select…</option>
+            <option value="have">Has the certificate</option>
+            <option value="fingerprints">Fingerprints taken — certificate pending</option>
+            <option value="peleza">Peleza check completed / waiting</option>
+            <option value="none">Not started</option>
+          </select>
+          <CaptureInlineError
+            show={showValidation}
+            message={fieldErrors.cogcSituation}
+          />
+        </ProtoField>
+        {form.cogcSituation === "have"
+          ? docSlot("cogc_certificate", "Certificate of Good Conduct", {
+              required: true,
+            })
+          : null}
+        {form.cogcSituation === "peleza"
+          ? docSlot("cogc_peleza_report", "Peleza report — good conduct", {
+              required: true,
+            })
+          : null}
+        {form.cogcSituation === "fingerprints" ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-ink-soft">
+            Fingerprints taken — certificate is pending. Application will be
+            flagged COGC-pending for operations. No upload required; continue
+            when ready.
+          </div>
+        ) : null}
+        {form.cogcSituation === "none" ? (
+          <ExitCard
+            title="Good conduct not started"
+            body="Advise the customer to apply at DCI. Save as paused until they obtain a certificate or complete fingerprinting."
+            steps={[
+              "Explain DCI Certificate of Good Conduct application steps.",
+              "Save draft — revisit when situation changes.",
+            ]}
+            actionLabel="Save draft & pause"
+            loading={patching}
+            onAction={() =>
+              void pauseFromStage(
+                "COGC blocked — customer has not started good conduct process.",
+              )
+            }
+          />
+        ) : null}
+      </div>
     );
   }
 
@@ -328,16 +561,38 @@ export function CaptureStageBody({
               show={showValidation}
               message={fieldErrors[`references.${index}.name`]}
             />
-            <ProtoInput
-              className="mt-2"
-              placeholder="Relationship"
+            <div className="mt-2">
+              <ValidatedTextInput
+                value={ref.nationalId}
+                showValidation={showValidation}
+                validate={(v) => nationalIdFormatErrorMessage(v)}
+                onChange={(nationalId) => {
+                  const references = [...form.references];
+                  references[index] = { ...ref, nationalId };
+                  patchForm({ references });
+                }}
+              />
+            </div>
+            <CaptureInlineError
+              show={showValidation}
+              message={fieldErrors[`references.${index}.nationalId`]}
+            />
+            <select
+              className="jw-focus mt-2 w-full rounded-[10px] border-[1.5px] border-line bg-card px-3.5 py-3"
               value={ref.relationship}
               onChange={(e) => {
                 const references = [...form.references];
                 references[index] = { ...ref, relationship: e.target.value };
                 patchForm({ references });
               }}
-            />
+            >
+              <option value="">Relationship…</option>
+              {REFERENCE_RELATIONSHIP_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
             <CaptureInlineError
               show={showValidation}
               message={fieldErrors[`references.${index}.relationship`]}
@@ -357,6 +612,18 @@ export function CaptureStageBody({
               show={showValidation}
               message={fieldErrors[`references.${index}.phone`]}
             />
+            <label className="mt-2 flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={ref.called}
+                onChange={(e) => {
+                  const references = [...form.references];
+                  references[index] = { ...ref, called: e.target.checked };
+                  patchForm({ references });
+                }}
+              />
+              Reference called during this session
+            </label>
           </div>
         ))}
         <label className="flex items-center gap-2 text-sm">
@@ -377,30 +644,13 @@ export function CaptureStageBody({
 
   if (stage === "model") {
     return (
-      <div className="mt-4 space-y-4">
-        <div className="grid gap-2 md:grid-cols-2">
-          {["FLEET", "STAGE", "DELIVERY", "PERSONAL"].map((model) => (
-            <ProtoBtn
-              key={model}
-              ghost={form.opModel !== model}
-              className={form.opModel === model ? "bg-accent text-white" : ""}
-              onClick={() => patchForm({ opModel: model })}
-            >
-              {model}
-            </ProtoBtn>
-          ))}
-        </div>
-        {form.opModel === "STAGE" ? (
-          <p className="rounded-xl bg-card-deep p-3 text-sm text-ink-soft">
-            Stage model: capture stage name, chairperson contact, and call
-            outcome (prototype sub-flow).
-          </p>
-        ) : null}
-        <CaptureInlineError
-          show={showValidation}
-          message={fieldErrors.opModel}
-        />
-      </div>
+      <ModelStageBody
+        stage={stage}
+        form={form}
+        showValidation={showValidation}
+        fieldErrors={fieldErrors}
+        docSlot={docSlot}
+      />
     );
   }
 
@@ -561,32 +811,52 @@ export function CaptureStageBody({
   }
 
   if (stage === "review") {
+    const checklist = reviewChecklistItems(form, referenceCode);
+    const blocking = reviewBlockingSummary(form);
+
     return (
-      <div className="rounded-2xl border border-line bg-card p-5 text-sm">
-        <p>
-          <strong>{form.name || "Customer"}</strong> · {form.opModel || "Model TBD"}
-        </p>
-        <p className="mt-2">Bike: {form.bikeReg ?? "—"}</p>
-        <p className="mt-2">Deposit: KES {form.deposit.toLocaleString()}</p>
-        <ProtoBtn
-          className="mt-4"
-          disabled={scanning}
-          onClick={() => {
-            setScanning(true);
-            window.setTimeout(() => {
-              setScanning(false);
-              setAnomalies([]);
-            }, 1000);
-          }}
-        >
-          {scanning ? "Running pre-submit scan…" : "Run anomaly scan (demo)"}
-        </ProtoBtn>
-        {anomalies ? (
-          <p className="mt-2 font-bold text-accent-deep">
-            ✓ No anomalies flagged
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-line bg-card p-5 text-sm">
+          <p>
+            <strong>{form.name || "Customer"}</strong> ·{" "}
+            {form.opModel || "Model TBD"}
           </p>
-        ) : null}
-        <Button asChild variant="outline" className="mt-3 w-full">
+          <p className="mt-2">Bike: {form.bikeReg ?? "—"}</p>
+          <p className="mt-2">Deposit: KES {form.deposit.toLocaleString()}</p>
+        </div>
+        <div className="rounded-2xl border border-line bg-card p-5">
+          <p className="text-xs font-extrabold uppercase tracking-wide text-ink-faint">
+            Stage checklist
+          </p>
+          <ul className="mt-3 space-y-2">
+            {checklist.map((item) => (
+              <li
+                key={item.stage}
+                className="flex items-center justify-between gap-2 text-sm"
+              >
+                <span className={item.complete ? "text-ink" : "text-red-600"}>
+                  {item.complete ? "✓" : "○"} {item.label}
+                </span>
+                {!item.complete && item.href ? (
+                  <Link
+                    href={item.href}
+                    className="text-xs font-bold text-accent-deep"
+                  >
+                    Fix
+                  </Link>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+          {blocking ? (
+            <p className="mt-3 text-sm font-semibold text-red-600">{blocking}</p>
+          ) : (
+            <p className="mt-3 text-sm font-semibold text-accent-deep">
+              All sections complete — ready to submit.
+            </p>
+          )}
+        </div>
+        <Button asChild variant="outline" className="w-full">
           <Link href={AppRoutes.desk}>Return to desk</Link>
         </Button>
       </div>

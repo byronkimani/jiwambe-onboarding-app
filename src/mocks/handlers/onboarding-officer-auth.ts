@@ -9,6 +9,7 @@ import {
   getOfficerAuthMockState,
   resetOfficerAuthMockState,
 } from "@/mocks/officer-auth-mock-state";
+import { officerProfileFromBearerToken } from "@/lib/onboarding/fixtures/officer-profile-fixtures";
 
 export { resetOfficerAuthMockState };
 
@@ -26,6 +27,16 @@ function authPath(segment: keyof typeof OFFICER_AUTH_UPSTREAM): string {
 }
 
 export const onboardingOfficerAuthHandlers = [
+  http.get(upstreamPath("/onboarding/agents/profile"), ({ request }) => {
+    const profile = officerProfileFromBearerToken(
+      request.headers.get("Authorization"),
+    );
+    if (!profile) {
+      return HttpResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+    return HttpResponse.json(profile);
+  }),
+
   http.post(authPath("login"), async ({ request }) => {
     const {
       officers,
