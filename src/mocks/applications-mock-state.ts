@@ -206,7 +206,8 @@ export function mockPatchApplication(
     return { ok: false, status: 409, error: "version_conflict" };
   }
 
-  const { version: _version, ...groups } = parsed.data;
+  const { version, ...groups } = parsed.data;
+  void version;
   const merged = mergePatch(current, groups as Record<string, unknown>);
   const now = new Date().toISOString();
   const application: OnboardingApplicationResource = {

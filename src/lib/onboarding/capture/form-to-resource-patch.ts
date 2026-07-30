@@ -142,6 +142,7 @@ export function patchBodyForStage(
           assetCondition: form.assetType === "used" ? "used" : "new",
           termMonths: Number.parseInt(form.term, 10) || 18,
           depositKes: form.deposit,
+          dailyAmountKes: form.quoteDailyKes ?? undefined,
           depositPayment: form.stkVerified
             ? { method: "stk", status: "verified" }
             : null,

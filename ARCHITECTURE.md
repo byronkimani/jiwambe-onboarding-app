@@ -1,63 +1,39 @@
 # Architecture — Jiwambe Onboarding
 
-Tablet-first Next.js PWA for **onboarding agents**. **Current:** infra + desk/capture route shells; product SSOT in [`docs/overview.md`](docs/overview.md).
+Tablet-first Next.js PWA for **onboarding agents**. Product spec: [`docs/overview.md`](docs/overview.md). API: [`docs/api-contract.md`](docs/api-contract.md) · OpenAPI [`docs/api-contract.openapi.yaml`](docs/api-contract.openapi.yaml).
 
 ## Request flow
 
 ```
-Browser (PWA on tablet)
-  → Next.js RSC / client components
-  → BFF route handlers (/api/onboarding/*)
-  → upstreamRequest() + agent Bearer token (Phase 3+)
-  → JIWAMBE_API_BASE_URL (onboarding paths per API contract)
+Browser (PWA)
+  → Next.js (RSC + client components)
+  → BFF /api/* route handlers
+  → upstreamRequest() + officer Bearer token
+  → JIWAMBE_API_BASE_URL
 ```
+
+- **Onboarding domain:** `/onboarding/applications`, `/onboarding/auth`
+- **Shared platform:** `/customers`, `/catalog`, `/inventory`, `/payments`
 
 ## Auth
 
-- **Email + password**, then **SMS OTP** for onboarding agents (see [`docs/prototype/js/auth.js`](docs/prototype/js/auth.js))
-- **BFF:** `POST /api/onboarding/auth/login`, `otp/resend`, `activate`, `activate/password` → upstream `/onboarding/auth/*`
-- **CRM activation:** one-time URL token; **httpOnly** activation session cookie; no tokens in JSON responses
-- **OTP sign-in:** upstream verify inside Auth.js `authorize()` only (no handoff cookie; no public otp/verify BFF)
-- Distinct from **rider** phone OTP in [`docs/field-rider-api-contract.md`](docs/field-rider-api-contract.md)
-- **Auth.js v5**, JWT holds upstream tokens; refresh **only** in `jwt` callback via `POST /onboarding/auth/refresh`
-- **Authenticated upstream calls:** `Authorization: Bearer` via [`upstreamRequest()`](src/lib/global/shared/upstream-request.ts)
-- **429 / OTP retries:** upstream `message` (and optional `retries_remaining`) forwarded by BFF
+- Email + password + SMS OTP ([`docs/prototype/js/auth.js`](docs/prototype/js/auth.js))
+- Auth.js v5 JWT; upstream tokens server-side only
+- OTP verify and token refresh **only** in server callbacks — no public BFF routes
 - Route gate: [`src/proxy.ts`](src/proxy.ts)
-- Edge-safe rules in [`src/auth.config.ts`](src/auth.config.ts)
-
-**Public paths:** `/`, `/activate`, `/offline`, `/account-blocked`, `/api/auth/*`, public `GET/POST /api/onboarding/auth/*`, `GET /api/onboarding/health`  
-**Protected:** `/desk`, `/desk/*`, `/capture`, `/capture/*`, other authenticated BFF
-
-## Agent flows (target)
-
-| Area | Routes |
-|------|--------|
-| Desk | `/desk`, `/desk/history`, `/desk/drafts` |
-| Capture | `/capture/[stage]` — readiness through review |
-
-## Applications (officer)
-
-- Resource shape: [`docs/onboarding-applications-api-contract.md`](docs/onboarding-applications-api-contract.md)
-- Types: [`src/lib/onboarding/application-resource.ts`](src/lib/onboarding/application-resource.ts)
-- BFF: `GET/POST /api/onboarding/applications`, `GET/PATCH …/:id`, `POST …/customers/lookup`, `POST …/catalog/quotes`
-- Desk UI uses [`OnboardingApplication`](src/lib/onboarding/types.ts) cards mapped from the resource
 
 ## MSW
 
-`MOCK_JIWAMBE_API=1` → [`src/instrumentation.ts`](src/instrumentation.ts) starts MSW ([`src/mocks/`](src/mocks/)).
-
-## PWA
-
-- Manifest: **Jiwambe Onboarding**, `#123E31`
-- Service worker stub: [`public/sw.js`](public/sw.js)
+`MOCK_JIWAMBE_API=1` → [`src/instrumentation.ts`](src/instrumentation.ts) starts handlers in [`src/mocks/`](src/mocks/).
 
 ## Security
 
-- No direct browser access to `JIWAMBE_API_BASE_URL`
-- Response headers in [`next.config.ts`](next.config.ts)
+- No browser access to `JIWAMBE_API_BASE_URL`
+- Typed [`AppRoutes`](src/lib/global/shared/routes.ts); no hardcoded API paths in client code
 
 ## Related products
 
-- **jiwambe-rider-app** — rider self-service after handover
-- **jiwambe-agents-app** — field referrals
-- [`docs/portal-migration.md`](docs/portal-migration.md) — customer portal → **rider app**, not this repo
+| Product | Role |
+|---------|------|
+| `jiwambe-agents-app` | Lead referral |
+| `jiwambe-rider-app` | Post-handover rider servicing (separate API) |

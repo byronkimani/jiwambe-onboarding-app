@@ -7,12 +7,12 @@ import { AppRoutes } from "@/lib/global/shared/routes";
 import { ReadinessStageBody } from "@/components/onboarding/capture/stages/readiness-stage-body";
 import {
   PORTAL_CUSTOMERS,
-  MIN_DEPOSIT_KES,
 } from "@/lib/onboarding/fixtures/capture-fixtures";
 import type { CaptureFormState } from "@/lib/onboarding/capture/types";
 import { validateCaptureStage } from "@/lib/onboarding/capture/stage-validation";
 import { useInventory } from "@/lib/onboarding/use-inventory";
 import { useCatalogProducts } from "@/lib/onboarding/use-catalog-products";
+import { useCatalogQuote } from "@/lib/onboarding/use-catalog-quote";
 import { CaptureInlineError } from "@/components/onboarding/capture/capture-inline-error";
 import { ProductDepositStkPanel } from "@/components/onboarding/capture/product-deposit-stk-panel";
 import { useCaptureWizard } from "@/components/onboarding/capture/capture-wizard-context";
@@ -51,27 +51,27 @@ export function CaptureStageBody({
     loading: catalogLoading,
     error: catalogError,
   } = useCatalogProducts();
-  const [quoteDaily, setQuoteDaily] = useState<number | null>(null);
+  const productQuote = useCatalogQuote({
+    productId: stage === "product" ? form.productId : "",
+    depositKes: stage === "product" ? form.deposit : 0,
+    termMonths: stage === "product" ? Number(form.term) || 18 : 18,
+    operatingModel: stage === "product" ? form.opModel : "",
+    assetCondition: form.assetType === "used" ? "used" : "new",
+    enabled: stage === "product",
+  });
   const [lookupQuery, setLookupQuery] = useState("");
   const [lookupMessage, setLookupMessage] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [anomalies, setAnomalies] = useState<string[] | null>(null);
 
   useEffect(() => {
-    if (stage !== "product" || !form.productId) return;
-    let cancelled = false;
-    const url = `${AppRoutes.apiOnboardingCatalogQuotes}?productId=${encodeURIComponent(form.productId)}&deposit=${form.deposit}`;
-    void fetch(url)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((body) => {
-        if (!cancelled && body?.dailyInstallmentKes) {
-          setQuoteDaily(body.dailyInstallmentKes as number);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [stage, form.productId, form.deposit]);
+    if (stage !== "product") return;
+    const q = productQuote.quote;
+    patchForm({
+      quoteMinDepositKes: q?.minDepositKes ?? null,
+      quoteDailyKes: q?.dailyAmountKes ?? null,
+    });
+  }, [stage, productQuote.quote, patchForm]);
 
   const stageValidation = showValidation
     ? validateCaptureStage(stage, form)
@@ -405,8 +405,7 @@ export function CaptureStageBody({
   }
 
   if (stage === "product") {
-    const minDeposit =
-      MIN_DEPOSIT_KES[form.opModel as keyof typeof MIN_DEPOSIT_KES] ?? 0;
+    const minDeposit = form.quoteMinDepositKes;
     return (
       <div className="mt-4 space-y-4">
         {catalogLoading ? (
@@ -423,7 +422,13 @@ export function CaptureStageBody({
               className={
                 form.productId === product.id ? "bg-accent text-white" : ""
               }
-              onClick={() => patchForm({ productId: product.id })}
+              onClick={() =>
+                patchForm({
+                  productId: product.id,
+                  quoteMinDepositKes: null,
+                  quoteDailyKes: null,
+                })
+              }
             >
               {product.label}
             </ProtoBtn>
@@ -433,28 +438,73 @@ export function CaptureStageBody({
           show={showValidation}
           message={fieldErrors.productId}
         />
+        <ProtoField label="Financing term" required>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { value: "18", label: "18 months" },
+              { value: "24", label: "24 months" },
+            ].map((option) => (
+              <ProtoBtn
+                key={option.value}
+                ghost={form.term !== option.value}
+                className={
+                  form.term === option.value ? "bg-accent text-white" : ""
+                }
+                onClick={() =>
+                  patchForm({
+                    term: option.value,
+                    quoteMinDepositKes: null,
+                    quoteDailyKes: null,
+                  })
+                }
+              >
+                {option.label}
+              </ProtoBtn>
+            ))}
+          </div>
+        </ProtoField>
         <ProtoField label="Deposit (KES)" required>
           <ProtoInput
             type="number"
             value={String(form.deposit)}
             onChange={(e) =>
-              patchForm({ deposit: Number(e.target.value) || 0 })
+              patchForm({
+                deposit: Number(e.target.value) || 0,
+                quoteMinDepositKes: null,
+                quoteDailyKes: null,
+              })
             }
           />
           <CaptureInlineError
             show={showValidation}
             message={fieldErrors.deposit}
           />
-          {minDeposit > 0 ? (
+          {minDeposit != null && minDeposit > 0 ? (
             <p className="mt-1 text-xs text-ink-soft">
-              Minimum for this model: KES {minDeposit.toLocaleString()}
+              Minimum for this quote: KES {minDeposit.toLocaleString()}
+            </p>
+          ) : productQuote.loading ? (
+            <p className="mt-1 text-xs text-ink-soft">Loading quote…</p>
+          ) : null}
+          {productQuote.error ? (
+            <p className="mt-1 text-xs font-semibold text-red-600">
+              {productQuote.error}
             </p>
           ) : null}
         </ProtoField>
-        {quoteDaily ? (
-          <p className="text-sm font-bold text-accent-deep">
-            Daily installment (from quote): KES {quoteDaily.toLocaleString()}
-          </p>
+        {form.quoteDailyKes != null ? (
+          <div className="rounded-xl border border-line bg-card-deep p-4">
+            <p className="text-[11px] font-extrabold uppercase tracking-wide text-ink-faint">
+              Financing calculator
+            </p>
+            <p className="mt-2 text-sm font-bold text-accent-deep">
+              Daily installment: KES {form.quoteDailyKes.toLocaleString()}
+            </p>
+            <p className="mt-1 text-xs text-ink-soft">
+              Based on {form.term} months · {form.opModel || "operating model"}{" "}
+              · deposit KES {form.deposit.toLocaleString()} (server quote)
+            </p>
+          </div>
         ) : null}
         <ProductDepositStkPanel
           form={form}

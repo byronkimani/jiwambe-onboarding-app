@@ -1,6 +1,6 @@
 /**
  * Officer onboarding application — upstream / BFF resource shape.
- * @see docs/onboarding-applications-api-contract.md
+ * @see docs/api-contract.md
  */
 
 export type ApplicationLifecycleState =

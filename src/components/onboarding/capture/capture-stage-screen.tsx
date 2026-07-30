@@ -19,7 +19,7 @@ import {
   captureStageCompleteMap,
   captureStageMeta,
 } from "@/lib/onboarding/capture/capture-progress";
-import { validateCaptureStage, isCaptureStageComplete, isFormReadyForSubmit } from "@/lib/onboarding/capture/stage-validation";
+import { validateCaptureStage, isFormReadyForSubmit } from "@/lib/onboarding/capture/stage-validation";
 import { toast } from "sonner";
 
 type Props = { stage: CaptureStageKey };

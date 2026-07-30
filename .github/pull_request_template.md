@@ -4,7 +4,7 @@
 
 ## Test plan
 
-- [ ] `pnpm lint`
+- [ ] `pnpm lint` (zero errors and zero warnings)
 - [ ] `pnpm typecheck`
 - [ ] `pnpm test --run`
 - [ ] `pnpm build`

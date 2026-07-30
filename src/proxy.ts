@@ -37,7 +37,14 @@ export default auth((request) => {
     return NextResponse.redirect(new URL(callbackUrl, request.nextUrl));
   }
 
-  if (!hasValidSession && pathname.startsWith("/api/onboarding")) {
+  if (
+    !hasValidSession &&
+    (pathname.startsWith("/api/onboarding") ||
+      pathname.startsWith("/api/catalog") ||
+      pathname.startsWith("/api/customers") ||
+      pathname.startsWith("/api/inventory") ||
+      pathname.startsWith("/api/payments"))
+  ) {
     if (isPublicApiOnboardingPath(pathname)) {
       return NextResponse.next();
     }

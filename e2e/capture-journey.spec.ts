@@ -3,7 +3,6 @@ import { AppRoutes, captureStage } from "../src/lib/global/shared/routes";
 import { signInAsOnboardingAgent } from "./helpers/sign-in";
 import {
   completeReadiness,
-  completeProductStageWithStk,
   runCaptureThroughSubmit,
   runCaptureToProductStage,
 } from "./helpers/capture";
@@ -20,13 +19,13 @@ test.describe("capture journey", () => {
   test("catalog and STK on product stage", async ({ page }) => {
     await signInAsOnboardingAgent(page);
     const ref = await runCaptureToProductStage(page);
-    const stk = await page.request.post(AppRoutes.apiOnboardingDepositStk, {
+    const stk = await page.request.post(AppRoutes.apiPaymentsStk, {
       data: { applicationReferenceCode: ref, depositKes: 10_000 },
     });
     expect(stk.ok()).toBeTruthy();
     const stkBody = (await stk.json()) as { checkoutId: string };
     const pending = await page.request.post(
-      AppRoutes.apiOnboardingDepositValidate,
+      AppRoutes.apiPaymentsValidate,
       {
         data: {
           applicationReferenceCode: ref,
@@ -36,7 +35,7 @@ test.describe("capture journey", () => {
     );
     expect((await pending.json()).status).toBe("pending");
     const verified = await page.request.post(
-      AppRoutes.apiOnboardingDepositValidate,
+      AppRoutes.apiPaymentsValidate,
       {
         data: {
           applicationReferenceCode: ref,
@@ -87,12 +86,12 @@ test.describe("capture journey", () => {
 
   test("catalog inventory deposits APIs require auth", async ({ request }) => {
     for (const path of [
-      AppRoutes.apiOnboardingCatalogProducts,
-      AppRoutes.apiOnboardingInventory,
-      AppRoutes.apiOnboardingDepositStk,
+      AppRoutes.apiCatalogProducts,
+      AppRoutes.apiInventory,
+      AppRoutes.apiPaymentsStk,
     ]) {
       const response = await request.get(path);
-      if (path === AppRoutes.apiOnboardingDepositStk) {
+      if (path === AppRoutes.apiPaymentsStk) {
         const post = await request.post(path, {
           data: { applicationReferenceCode: "A-1", depositKes: 1000 },
         });
@@ -101,7 +100,7 @@ test.describe("capture journey", () => {
         expect(response.status()).toBe(401);
       }
     }
-    const validate = await request.post(AppRoutes.apiOnboardingDepositValidate, {
+    const validate = await request.post(AppRoutes.apiPaymentsValidate, {
       data: { applicationReferenceCode: "A-1", mpesaReceipt: "UGE2ETEST01" },
     });
     expect(validate.status()).toBe(401);

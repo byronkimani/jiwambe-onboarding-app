@@ -1,6 +1,6 @@
 import type { OnboardingApplicationResource } from "@/lib/onboarding/application-resource";
 
-/** Canonical example from docs/onboarding-applications-api-contract.md */
+/** Canonical example from docs/api-contract.md */
 export const SAMPLE_APPLICATION_RESOURCE: OnboardingApplicationResource = {
   id: "app_01jabc",
   referenceCode: "A-1042",

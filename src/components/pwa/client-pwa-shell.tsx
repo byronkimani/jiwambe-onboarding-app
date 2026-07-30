@@ -1,6 +1,5 @@
 "use client";
 
-import { OfflineRedirect } from "@/components/pwa/offline-redirect";
 import { PwaInstallCoordinator } from "@/components/pwa/pwa-install-coordinator";
 
 type ClientPwaShellProps = {
@@ -9,10 +8,5 @@ type ClientPwaShellProps = {
 };
 
 export function ClientPwaShell({ showInstallPrompt = true }: ClientPwaShellProps) {
-  return (
-    <>
-      <OfflineRedirect />
-      {showInstallPrompt ? <PwaInstallCoordinator /> : null}
-    </>
-  );
+  return <>{showInstallPrompt ? <PwaInstallCoordinator /> : null}</>;
 }

@@ -1,0 +1,1117 @@
+openapi: 3.0.3
+info:
+  title: Jiwambe Onboarding — Platform API
+  description: |
+    Upstream API consumed by **jiwambe-onboarding-app** via its Next.js BFF.
+
+    - Human-readable contract: [`api-contract.md`](./api-contract.md)
+    - BFF routes mirror these paths under `/api/*` (see markdown BFF map)
+    - Money fields are server-computed; clients display only
+  version: 1.0.0
+  contact:
+    name: Jiwambe Platform
+
+servers:
+  - url: "{jiwambeApiBaseUrl}"
+    description: Includes `/api/v1` — set via `JIWAMBE_API_BASE_URL`
+    variables:
+      jiwambeApiBaseUrl:
+        default: https://api.example.jiwambe.com/api/v1
+
+tags:
+  - name: OfficerAuth
+    description: Email + password + SMS OTP (onboarding agents)
+  - name: Applications
+    description: Officer field capture and worklist
+  - name: Customers
+    description: Shared customer / lead search
+  - name: Catalog
+    description: Shared product catalog and financing quotes
+  - name: Inventory
+    description: Dealership stock (read-only)
+  - name: Payments
+    description: Shared M-Pesa deposit flows
+
+security:
+  - bearerAuth: []
+
+paths:
+  /onboarding/auth/login:
+    post:
+      tags: [OfficerAuth]
+      summary: Start login — returns OTP session
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OfficerLoginRequest"
+      responses:
+        "200":
+          description: OTP challenge started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OfficerLoginResponse"
+        "401":
+          $ref: "#/components/responses/InvalidCredentials"
+        "403":
+          $ref: "#/components/responses/AccountBlocked"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /onboarding/auth/otp/verify:
+    post:
+      tags: [OfficerAuth]
+      summary: Verify OTP (server-to-server from BFF only)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OfficerOtpVerifyRequest"
+      responses:
+        "200":
+          description: Tokens issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OfficerTokenResponse"
+        "401":
+          $ref: "#/components/responses/InvalidOtp"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /onboarding/auth/otp/resend:
+    post:
+      tags: [OfficerAuth]
+      summary: Resend SMS OTP
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [otp_session_id]
+              properties:
+                otp_session_id:
+                  type: string
+      responses:
+        "200":
+          description: Code resent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resend_available_in_seconds:
+                    type: integer
+                  message:
+                    type: string
+        "410":
+          $ref: "#/components/responses/OtpExpired"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /onboarding/auth/refresh:
+    post:
+      tags: [OfficerAuth]
+      summary: Refresh access token (BFF jwt callback only)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        "200":
+          description: New tokens
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenRefreshResponse"
+        "401":
+          $ref: "#/components/responses/InvalidRefresh"
+
+  /onboarding/auth/logout:
+    post:
+      tags: [OfficerAuth]
+      summary: Revoke refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+
+  /onboarding/auth/activate:
+    post:
+      tags: [OfficerAuth]
+      summary: Validate CRM activation magic-link token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+      responses:
+        "200":
+          description: Activation session started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivationSessionResponse"
+        "410":
+          $ref: "#/components/responses/ActivationExpired"
+
+  /onboarding/auth/activate/password:
+    post:
+      tags: [OfficerAuth]
+      summary: Set password after activation
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [activation_session_id, password]
+              properties:
+                activation_session_id:
+                  type: string
+                password:
+                  type: string
+                  minLength: 8
+      responses:
+        "200":
+          description: Password set
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        "410":
+          $ref: "#/components/responses/ActivationExpired"
+
+  /onboarding/auth/password/forgot:
+    post:
+      tags: [OfficerAuth]
+      summary: Request password reset email
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        "200":
+          description: Generic success (no enumeration)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "429":
+          $ref: "#/components/responses/RateLimited"
+
+  /onboarding/auth/password/reset:
+    post:
+      tags: [OfficerAuth]
+      summary: Validate password-reset magic-link token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+      responses:
+        "200":
+          description: Reset session started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResetSessionResponse"
+        "410":
+          $ref: "#/components/responses/ResetExpired"
+
+  /onboarding/auth/password/reset/password:
+    post:
+      tags: [OfficerAuth]
+      summary: Set new password after reset
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reset_session_id, password]
+              properties:
+                reset_session_id:
+                  type: string
+                password:
+                  type: string
+                  minLength: 8
+      responses:
+        "200":
+          description: Password updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        "410":
+          $ref: "#/components/responses/ResetExpired"
+
+  /onboarding/applications:
+    get:
+      tags: [Applications]
+      summary: List applications (worklist / drafts / history)
+      parameters:
+        - name: lifecycleState
+          in: query
+          schema:
+            $ref: "#/components/schemas/LifecycleState"
+        - name: scope
+          in: query
+          schema:
+            type: string
+            enum: [history]
+      responses:
+        "200":
+          description: Application summaries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [applications]
+                properties:
+                  applications:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ApplicationSummary"
+    post:
+      tags: [Applications]
+      summary: Create application after readiness
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApplicationRequest"
+      responses:
+        "201":
+          description: Created draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationEnvelope"
+
+  /onboarding/applications/current:
+    get:
+      tags: [Applications]
+      summary: Current officer draft or paused application
+      responses:
+        "200":
+          description: Open capture application
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationEnvelope"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /onboarding/applications/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ApplicationId"
+    get:
+      tags: [Applications]
+      summary: Get full application
+      responses:
+        "200":
+          description: Application resource
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationEnvelope"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Applications]
+      summary: Partial update (requires version)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplicationPatch"
+      responses:
+        "200":
+          description: Updated application
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationEnvelope"
+        "409":
+          $ref: "#/components/responses/VersionConflict"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /onboarding/applications/{id}/pause:
+    parameters:
+      - $ref: "#/components/parameters/ApplicationId"
+    post:
+      tags: [Applications]
+      summary: Pause capture
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReasonRequest"
+      responses:
+        "200":
+          description: Paused
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationEnvelope"
+
+  /onboarding/applications/{id}/submit:
+    parameters:
+      - $ref: "#/components/parameters/ApplicationId"
+    post:
+      tags: [Applications]
+      summary: Submit to operations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                officerAttestation:
+                  type: boolean
+      responses:
+        "200":
+          description: Submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationEnvelope"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /onboarding/applications/{id}/disqualify:
+    parameters:
+      - $ref: "#/components/parameters/ApplicationId"
+    post:
+      tags: [Applications]
+      summary: Disqualify (DRAFT or PAUSED only)
+      description: See onboarding-disqualify-rules.md
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReasonRequest"
+      responses:
+        "200":
+          description: Disqualified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationEnvelope"
+
+  /onboarding/applications/{id}/documents/init:
+    parameters:
+      - $ref: "#/components/parameters/ApplicationId"
+    post:
+      tags: [Applications]
+      summary: Init presigned document upload (planned)
+      x-implemented: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [purpose, contentType, byteSize]
+              properties:
+                purpose:
+                  type: string
+                  example: id_front
+                contentType:
+                  type: string
+                byteSize:
+                  type: integer
+      responses:
+        "200":
+          description: Upload instructions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  documentId:
+                    type: string
+                  uploadUrl:
+                    type: string
+                    format: uri
+                  uploadHeaders:
+                    type: object
+                    additionalProperties:
+                      type: string
+                  expiresAt:
+                    type: string
+                    format: date-time
+
+  /onboarding/applications/{id}/documents/{documentId}/complete:
+    parameters:
+      - $ref: "#/components/parameters/ApplicationId"
+      - name: documentId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      tags: [Applications]
+      summary: Complete document upload (planned)
+      x-implemented: false
+      responses:
+        "200":
+          description: Document ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationEnvelope"
+
+  /customers/search:
+    post:
+      tags: [Customers]
+      summary: Search portal leads by phone or national ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerSearchRequest"
+      responses:
+        "200":
+          description: Matches
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [matches]
+                properties:
+                  matches:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CustomerSearchMatch"
+
+  /catalog/products:
+    get:
+      tags: [Catalog]
+      summary: Product catalog for financing
+      responses:
+        "200":
+          description: Products
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [products]
+                properties:
+                  products:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CatalogProduct"
+
+  /catalog/pricing-rules:
+    get:
+      tags: [Catalog]
+      summary: Minimum deposit per operating model (readiness)
+      responses:
+        "200":
+          description: Pricing rules
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PricingRulesResponse"
+
+  /catalog/quotes:
+    post:
+      tags: [Catalog]
+      summary: Financing calculator (product stage)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CatalogQuoteRequest"
+      responses:
+        "200":
+          description: Quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CatalogQuoteResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /inventory:
+    get:
+      tags: [Inventory]
+      summary: Dealership stock for bike assignment
+      parameters:
+        - name: dealershipId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Stock and assignment rules
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryResponse"
+
+  /payments/stk:
+    post:
+      tags: [Payments]
+      summary: Initiate M-Pesa STK push for deposit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentStkRequest"
+      responses:
+        "200":
+          description: STK initiated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentStkResponse"
+
+  /payments/validate:
+    post:
+      tags: [Payments]
+      summary: Poll STK or validate M-Pesa receipt code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentValidateRequest"
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentValidateResponse"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    ApplicationId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Application reference code or internal id
+
+  responses:
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+    InvalidCredentials:
+      description: Invalid email or password
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+    AccountBlocked:
+      description: Account disabled
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+    InvalidOtp:
+      description: Invalid OTP
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/ErrorBody"
+              - type: object
+                properties:
+                  retries_remaining:
+                    type: integer
+    RateLimited:
+      description: Rate limited
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/ErrorBody"
+              - type: object
+                properties:
+                  retry_after_seconds:
+                    type: integer
+    OtpExpired:
+      description: OTP session expired
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+    ActivationExpired:
+      description: Activation token expired
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+    ResetExpired:
+      description: Reset token expired
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+    InvalidRefresh:
+      description: Invalid refresh token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+    VersionConflict:
+      description: Optimistic lock conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorBody"
+    ValidationFailed:
+      description: Submit blocked
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [error, blockingIssues]
+            properties:
+              error:
+                type: string
+                example: validation_failed
+              blockingIssues:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    code:
+                      type: string
+                    message:
+                      type: string
+
+  schemas:
+    ErrorBody:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+
+    OfficerLoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    OfficerLoginResponse:
+      type: object
+      required: [otp_session_id, masked_phone]
+      properties:
+        otp_session_id:
+          type: string
+        masked_phone:
+          type: string
+        resend_available_in_seconds:
+          type: integer
+
+    OfficerOtpVerifyRequest:
+      type: object
+      required: [otp_session_id, code]
+      properties:
+        otp_session_id:
+          type: string
+        code:
+          type: string
+          pattern: "^[0-9]{6}$"
+
+    OfficerTokenResponse:
+      type: object
+      required: [access_token, refresh_token, expires_in, officer]
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+        officer:
+          type: object
+          properties:
+            email:
+              type: string
+            name:
+              type: string
+
+    TokenRefreshResponse:
+      type: object
+      required: [access_token, refresh_token, expires_in]
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+
+    ActivationSessionResponse:
+      type: object
+      properties:
+        activation_session_id:
+          type: string
+        email_masked:
+          type: string
+
+    ResetSessionResponse:
+      type: object
+      properties:
+        reset_session_id:
+          type: string
+        email_masked:
+          type: string
+
+    LifecycleState:
+      type: string
+      enum:
+        - DRAFT
+        - PAUSED
+        - OPS_REVIEW
+        - LMS_CREATED
+        - AGREEMENT_SIGNED
+        - READY_FOR_RELEASE
+        - ACTIVE_LOAN
+        - DISQUALIFIED
+
+    OperatingModel:
+      type: string
+      enum: [FLEET, STAGE, DELIVERY, PERSONAL]
+
+    AssetCondition:
+      type: string
+      enum: [new, used]
+
+    CreateApplicationRequest:
+      type: object
+      required: [readinessAttestations]
+      properties:
+        readinessAttestations:
+          type: object
+          additionalProperties:
+            type: boolean
+
+    ReasonRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 6
+
+    ApplicationSummary:
+      type: object
+      description: Worklist card projection — see application-schemas.ts for full shape
+      properties:
+        referenceCode:
+          type: string
+        lifecycleState:
+          $ref: "#/components/schemas/LifecycleState"
+        customerDisplayName:
+          type: string
+        productLabel:
+          type: string
+        depositKes:
+          type: integer
+        dailyAmountKes:
+          type: integer
+
+    ApplicationResource:
+      type: object
+      description: Full resource — see sample-application-resource.ts
+      properties:
+        referenceCode:
+          type: string
+        version:
+          type: integer
+        lifecycleState:
+          $ref: "#/components/schemas/LifecycleState"
+        customer:
+          type: object
+        financing:
+          type: object
+        operatingModel:
+          type: object
+        bikeAssignment:
+          type: object
+          nullable: true
+
+    ApplicationPatch:
+      type: object
+      required: [version]
+      properties:
+        version:
+          type: integer
+        customer:
+          type: object
+        financing:
+          type: object
+        operatingModel:
+          type: object
+        bikeAssignment:
+          type: object
+
+    ApplicationEnvelope:
+      type: object
+      required: [application]
+      properties:
+        application:
+          $ref: "#/components/schemas/ApplicationResource"
+
+    CustomerSearchRequest:
+      type: object
+      properties:
+        phone:
+          type: string
+        nationalId:
+          type: string
+          nullable: true
+
+    CustomerSearchMatch:
+      type: object
+      properties:
+        leadId:
+          type: string
+        source:
+          type: string
+        displayName:
+          type: string
+        phoneMasked:
+          type: string
+        nationalIdMasked:
+          type: string
+
+    CatalogProduct:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        priceNew:
+          type: integer
+        priceUsed:
+          type: integer
+
+    PricingRulesResponse:
+      type: object
+      required: [operatingModels, currency]
+      properties:
+        operatingModels:
+          type: array
+          items:
+            type: object
+            properties:
+              operatingModel:
+                $ref: "#/components/schemas/OperatingModel"
+              label:
+                type: string
+              minDepositKes:
+                type: integer
+        currency:
+          type: string
+          example: KES
+
+    CatalogQuoteRequest:
+      type: object
+      required: [productId, depositKes, termMonths, operatingModel]
+      properties:
+        productId:
+          type: string
+        depositKes:
+          type: integer
+          minimum: 0
+        termMonths:
+          type: integer
+          enum: [18, 24]
+        operatingModel:
+          $ref: "#/components/schemas/OperatingModel"
+        assetCondition:
+          $ref: "#/components/schemas/AssetCondition"
+
+    CatalogQuoteResponse:
+      type: object
+      properties:
+        productId:
+          type: string
+        depositKes:
+          type: integer
+        termMonths:
+          type: integer
+        operatingModel:
+          $ref: "#/components/schemas/OperatingModel"
+        assetCondition:
+          $ref: "#/components/schemas/AssetCondition"
+        assetPriceKes:
+          type: integer
+        financedAmountKes:
+          type: integer
+        dailyAmountKes:
+          type: integer
+        minDepositKes:
+          type: integer
+        currency:
+          type: string
+          example: KES
+
+    InventoryResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              registration:
+                type: string
+              model:
+                type: string
+              color:
+                type: string
+              status:
+                type: string
+        rules:
+          type: object
+          properties:
+            softHoldMinutes:
+              type: integer
+            assignableStatuses:
+              type: array
+              items:
+                type: string
+
+    PaymentStkRequest:
+      type: object
+      required: [applicationReferenceCode, depositKes]
+      properties:
+        applicationReferenceCode:
+          type: string
+        depositKes:
+          type: integer
+        phone:
+          type: string
+
+    PaymentStkResponse:
+      type: object
+      properties:
+        checkoutId:
+          type: string
+        status:
+          type: string
+          enum: [initiated, waiting]
+        expiresAt:
+          type: string
+          format: date-time
+
+    PaymentValidateRequest:
+      type: object
+      required: [applicationReferenceCode]
+      properties:
+        applicationReferenceCode:
+          type: string
+        checkoutId:
+          type: string
+        mpesaReceipt:
+          type: string
+
+    PaymentValidateResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [verified, pending, failed]
+        mpesaReceipt:
+          type: string
+          nullable: true
+        depositPayment:
+          type: object
+          nullable: true
+        applicationVersion:
+          type: integer

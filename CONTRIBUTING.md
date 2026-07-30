@@ -19,10 +19,14 @@ If the remote only has `main`, create `sandbox` from `main` before feature work.
 
 1. Branch from `sandbox`
 2. Implement per [`docs/implementation-plan.md`](docs/implementation-plan.md) *(when filled)*
-3. Run `pnpm lint`, `pnpm typecheck`, `pnpm test --run`, `pnpm build`, `pnpm test:e2e`
+3. Run `pnpm lint` (zero errors **and** zero warnings), `pnpm typecheck`, `pnpm test --run`, `pnpm build`, `pnpm test:e2e`
 4. Update [`docs/implementation-status.md`](docs/implementation-status.md)
 5. Open PR to `sandbox`
 
 ## Commits
 
 Conventional Commits. AI agents: wait for human approval before `git commit`.
+
+## Lint
+
+`pnpm lint` must exit **0** with no ESLint errors or warnings. Fix or justify any new rule hits in the PR — do not merge with warnings.

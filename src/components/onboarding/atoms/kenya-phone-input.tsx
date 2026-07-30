@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import {
   KENYA_PHONE_FIELD_HINT,
   KENYA_PHONE_INPUT_PLACEHOLDER,

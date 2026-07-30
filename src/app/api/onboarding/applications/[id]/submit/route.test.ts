@@ -1,5 +1,4 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { NextResponse } from "next/server";
 import { POST } from "@/app/api/onboarding/applications/[id]/submit/route";
 import { SAMPLE_APPLICATION_RESOURCE } from "@/lib/onboarding/fixtures/sample-application-resource";
 

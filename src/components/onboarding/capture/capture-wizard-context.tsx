@@ -344,6 +344,7 @@ export function CaptureWizardProvider({
       resumeError,
       apiError,
       conflictRecovered,
+      clearConflictRecovered,
       createApplicationFromReadiness,
       patchApplicationForStage,
       pauseApplication,

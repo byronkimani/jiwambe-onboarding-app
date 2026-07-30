@@ -14,7 +14,7 @@ export function useCatalogProducts() {
     async function load() {
       setLoading(true);
       setError(null);
-      const response = await fetch(AppRoutes.apiOnboardingCatalogProducts, {
+      const response = await fetch(AppRoutes.apiCatalogProducts, {
         credentials: "same-origin",
       });
       if (!response.ok) {

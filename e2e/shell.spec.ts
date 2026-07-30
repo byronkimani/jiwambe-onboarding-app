@@ -2,7 +2,6 @@ import { expect, test } from "@playwright/test";
 import {
   DEMO_ACTIVATION_TOKEN,
   DEMO_AGENT_EMAIL,
-  DEMO_AGENT_PASSWORD,
   DEMO_OTP_CODE,
   DEMO_PENDING_AGENT_EMAIL,
   DEMO_RESET_TOKEN,

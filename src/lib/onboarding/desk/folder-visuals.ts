@@ -27,7 +27,7 @@ export const MODEL_PILL: Record<
     fgClass: "text-blue",
   },
   STAGE: {
-    label: "Offline · Stage",
+    label: "Stage",
     bgClass: "bg-slate-bg",
     fgClass: "text-ink-soft",
   },

@@ -1,6 +1,6 @@
 /**
  * Client-side capture wizard form (UX). Persisted shape is
- * `OnboardingApplicationResource` — see docs/onboarding-applications-api-contract.md.
+ * `OnboardingApplicationResource` — see docs/api-contract.md.
  */
 export type StkUiState =
   | "idle"
@@ -32,6 +32,9 @@ export type CaptureFormState = {
   productId: string;
   term: string;
   deposit: number;
+  /** From BFF catalog quote — display and validation only. */
+  quoteMinDepositKes: number | null;
+  quoteDailyKes: number | null;
   bikeReg: string | null;
   stkVerified: boolean;
   stkState: StkUiState;
@@ -66,6 +69,8 @@ export function createEmptyCaptureForm(): CaptureFormState {
     productId: "",
     term: "18",
     deposit: 10000,
+    quoteMinDepositKes: null,
+    quoteDailyKes: null,
     bikeReg: null,
     stkVerified: false,
     stkState: "idle",
