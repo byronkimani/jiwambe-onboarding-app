@@ -1,7 +1,7 @@
 import type { NextAuthConfig } from "next-auth";
 import {
   AppRoutes,
-  isApiOnboardingPath,
+  isProtectedApiPath,
   isProtectedPath,
   isPublicApiOnboardingPath,
   isPublicPath,
@@ -27,7 +27,7 @@ export const authConfig = {
         return true;
       }
 
-      if (isProtectedPath(pathname) || isApiOnboardingPath(pathname)) {
+      if (isProtectedPath(pathname) || isProtectedApiPath(pathname)) {
         return isLoggedIn;
       }
 

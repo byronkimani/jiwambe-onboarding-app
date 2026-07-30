@@ -6,7 +6,8 @@ import {
 
 export { DEFAULT_INVENTORY_RULES };
 
-export function listInventoryItems(_dealershipId?: string | null) {
+export function listInventoryItems(dealershipId?: string | null) {
+  void dealershipId;
   return getSeedInventoryItems();
 }
 

@@ -112,6 +112,8 @@ export function hydrateCaptureFormFromResource(
     productId: productIdFromFinancing(resource.financing),
     term: String(resource.financing?.termMonths ?? base.term),
     deposit: resource.financing?.depositKes ?? base.deposit,
+    quoteMinDepositKes: null,
+    quoteDailyKes: resource.financing?.dailyAmountKes ?? null,
     bikeReg: resource.bikeAssignment?.registration ?? null,
     stkVerified: resource.financing?.depositPayment?.status === "verified",
     stkState:

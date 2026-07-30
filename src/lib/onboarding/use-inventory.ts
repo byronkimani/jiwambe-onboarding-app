@@ -23,7 +23,7 @@ export function useInventory(dealershipId?: string | null) {
         ? `?dealershipId=${encodeURIComponent(dealershipId)}`
         : "";
       const response = await fetch(
-        `${AppRoutes.apiOnboardingInventory}${params}`,
+        `${AppRoutes.apiInventory}${params}`,
         { credentials: "same-origin" },
       );
       if (!response.ok) {

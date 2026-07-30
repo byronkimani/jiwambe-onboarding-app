@@ -4,7 +4,7 @@ Tablet-first [Next.js](https://nextjs.org) PWA for **onboarding agents** at Jiwa
 
 The browser talks only to this app’s BFF under `/api/onboarding/*` (see [`src/lib/global/shared/routes.ts`](src/lib/global/shared/routes.ts)).
 
-**Specs:** [`docs/overview.md`](docs/overview.md) · [`docs/implementation-plan.md`](docs/implementation-plan.md) · [`docs/implementation-status.md`](docs/implementation-status.md)
+**Specs:** [`docs/overview.md`](docs/overview.md) · [`docs/api-contract.md`](docs/api-contract.md) · [`docs/api-contract.openapi.yaml`](docs/api-contract.openapi.yaml) · [`docs/implementation-status.md`](docs/implementation-status.md)
 
 **Contributing / agent rules:** [`AGENTS.md`](AGENTS.md) · **Architecture:** [`ARCHITECTURE.md`](ARCHITECTURE.md)
 
@@ -52,7 +52,7 @@ E2E: **tablet** project for `shell.spec.ts`; **mobile-chrome** (390×844) for `c
 ```bash
 pnpm dev
 pnpm build
-pnpm lint
+pnpm lint          # must pass with zero errors and zero warnings
 pnpm typecheck
 pnpm test --run
 pnpm test:e2e

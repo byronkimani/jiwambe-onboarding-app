@@ -8,7 +8,7 @@
 1. **Pure BFF** — the browser never calls `JIWAMBE_API_BASE_URL` directly. No `fetch(JIWAMBE_API_BASE_URL)` in `"use client"` files.
 2. **No frontend loan or price math** — daily amounts, ownership %, and quotes are display-only from the API.
 3. **`pnpm` only** — use typed `AppRoutes` from `src/lib/global/shared/routes.ts`; no hardcoded URL strings elsewhere.
-4. **Tests mandatory** — happy + edge per changed function/route; mobile Playwright E2E (390×844) every phase.
+4. **Tests mandatory** — happy + edge per changed function/route; mobile Playwright E2E (390×844) every phase. **`pnpm lint` must pass with zero errors and zero warnings.**
 5. **No unauthorized `git commit`** — stage changes, show diff, wait for human approval before committing.
 6. **Branch flow** — feature branches from `sandbox`; PRs target `sandbox`.
 7. **UI** — shadcn/ui + Tailwind 4; follow [`docs/prototype/`](docs/prototype/) unless [`docs/overview.md`](docs/overview.md) overrides.

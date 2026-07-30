@@ -1,13 +1,15 @@
 import { onboardingApplicationsHandlers } from "@/mocks/handlers/onboarding-applications";
-import { onboardingCatalogHandlers } from "@/mocks/handlers/onboarding-catalog";
-import { onboardingDepositsHandlers } from "@/mocks/handlers/onboarding-deposits";
-import { onboardingInventoryHandlers } from "@/mocks/handlers/onboarding-inventory";
+import { ecosystemCatalogHandlers } from "@/mocks/handlers/ecosystem-catalog";
+import { ecosystemCustomersHandlers } from "@/mocks/handlers/ecosystem-customers";
+import { ecosystemInventoryHandlers } from "@/mocks/handlers/ecosystem-inventory";
+import { ecosystemPaymentsHandlers } from "@/mocks/handlers/ecosystem-payments";
 import { onboardingOfficerAuthHandlers } from "@/mocks/handlers/onboarding-officer-auth";
 
 export const handlers = [
   ...onboardingOfficerAuthHandlers,
   ...onboardingApplicationsHandlers,
-  ...onboardingCatalogHandlers,
-  ...onboardingDepositsHandlers,
-  ...onboardingInventoryHandlers,
+  ...ecosystemCatalogHandlers,
+  ...ecosystemCustomersHandlers,
+  ...ecosystemInventoryHandlers,
+  ...ecosystemPaymentsHandlers,
 ] as const;

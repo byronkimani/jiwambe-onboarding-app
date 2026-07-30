@@ -4,7 +4,6 @@ import { Sheet } from "@/components/ui/sheet";
 import type { OfficerProfile } from "@/lib/onboarding/types";
 import { ProtoBtn } from "@/components/onboarding/atoms/proto-field";
 import { performOfficerSignOut } from "@/components/auth/sign-out-button";
-import { AppRoutes } from "@/lib/global/shared/routes";
 
 type ProfileSheetProps = {
   open: boolean;

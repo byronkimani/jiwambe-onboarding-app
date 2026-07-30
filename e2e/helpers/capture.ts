@@ -84,12 +84,17 @@ export async function completeReferencesStage(page: Page): Promise<void> {
   await page
     .getByText("Customer consents to reference verification calls")
     .click();
-  await clickContinue(page);
+  await Promise.all([
+    page.waitForURL(/\/capture\/model/, { timeout: 30_000 }),
+    clickContinue(page),
+  ]);
 }
 
 export async function completeModelStage(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/capture\/model/);
-  await page.getByRole("button", { name: "FLEET" }).click();
+  const fleet = page.getByRole("button", { name: "FLEET" });
+  await fleet.click();
+  await expect(fleet).toHaveClass(/bg-accent/);
   await Promise.all([
     page.waitForURL(/\/capture\/product/, { timeout: 30_000 }),
     clickContinue(page),
@@ -99,7 +104,7 @@ export async function completeModelStage(page: Page): Promise<void> {
 export async function waitForProductCatalog(page: Page): Promise<void> {
   await page.waitForResponse(
     (res) =>
-      res.url().includes("/api/onboarding/catalog/products") && res.ok(),
+      res.url().includes("/api/catalog/products") && res.ok(),
     { timeout: 30_000 },
   );
   await expect(page.getByRole("button", { name: "Spiro TVS" })).toBeVisible({
@@ -120,12 +125,22 @@ async function confirmDepositWithFallbackUi(page: Page): Promise<void> {
   });
 }
 
-export async function completeProductStageWithStk(
-  page: Page,
-  _referenceCode: string,
-): Promise<void> {
+export async function completeProductStageWithStk(page: Page): Promise<void> {
   await waitForProductCatalog(page);
   await page.getByRole("button", { name: "Spiro TVS" }).click();
+  await page.waitForResponse(
+    (res) =>
+      res.url().includes("/api/catalog/quotes") &&
+      res.request().method() === "POST" &&
+      res.ok(),
+    { timeout: 30_000 },
+  );
+  await expect(page.getByText(/Financing calculator/i)).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.getByText(/Daily installment:/i)).toBeVisible({
+    timeout: 15_000,
+  });
 
   await page.getByRole("button", { name: "Send STK push" }).click();
   try {
@@ -183,7 +198,7 @@ export async function runCaptureToProductStage(page: Page): Promise<string> {
 
 export async function runCaptureThroughSubmit(page: Page): Promise<string> {
   const ref = await runCaptureToProductStage(page);
-  await completeProductStageWithStk(page, ref);
+  await completeProductStageWithStk(page);
   await completeBikeStage(page);
   await submitFromReview(page);
   return ref;

@@ -8,6 +8,7 @@ import {
   isCaptureStageKey,
   isDeskPath,
   isProtectedPath,
+  isProtectedApiPath,
   isPublicApiOnboardingPath,
   isPublicPath,
 } from "./routes";
@@ -48,9 +49,9 @@ describe("routes", () => {
     expect(isPublicApiOnboardingPath(AppRoutes.apiOnboardingApplications)).toBe(
       false,
     );
-    expect(isPublicApiOnboardingPath(AppRoutes.apiOnboardingCatalogQuotes)).toBe(
-      false,
-    );
+    expect(isProtectedApiPath(AppRoutes.apiCatalogQuotes)).toBe(true);
+    expect(isProtectedApiPath(AppRoutes.apiCustomersSearch)).toBe(true);
+    expect(isProtectedApiPath(AppRoutes.apiPaymentsStk)).toBe(true);
     expect(isPublicApiOnboardingPath(AppRoutes.apiOnboardingAuthLogin)).toBe(
       true,
     );

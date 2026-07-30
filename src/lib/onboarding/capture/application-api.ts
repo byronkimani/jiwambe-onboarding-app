@@ -97,7 +97,7 @@ export async function apiCustomerLookup(body: {
   | { ok: true; matches: CustomerLookupMatch[] }
   | { ok: false; status: number; message: string }
 > {
-  const response = await fetch(AppRoutes.apiOnboardingCustomersLookup, {
+  const response = await fetch(AppRoutes.apiCustomersSearch, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
@@ -288,7 +288,7 @@ export async function apiDepositStk(body: {
     }
   | { ok: false; status: number; message: string }
 > {
-  const response = await fetch(AppRoutes.apiOnboardingDepositStk, {
+  const response = await fetch(AppRoutes.apiPaymentsStk, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
@@ -328,7 +328,7 @@ export async function apiDepositValidate(body: {
     }
   | { ok: false; status: number; message: string }
 > {
-  const response = await fetch(AppRoutes.apiOnboardingDepositValidate, {
+  const response = await fetch(AppRoutes.apiPaymentsValidate, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",

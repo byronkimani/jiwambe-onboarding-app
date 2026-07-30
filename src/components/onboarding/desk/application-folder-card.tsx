@@ -77,54 +77,21 @@ export function ApplicationFolderCard({
     if (href) router.push(href);
   }
 
+  const idTabClass = cn(
+    "relative z-10 inline-block rounded-t-[9px] border border-b-0 border-kraft-edge bg-kraft font-mono font-bold tracking-wide text-kraft-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]",
+    compact ? "px-3 py-1 text-[11px]" : "px-4 py-1.5 text-[12.5px]",
+  );
+
+  const statusTabClass = cn(
+    "relative z-10 flex shrink-0 items-center gap-1.5 rounded-t-[7px] font-extrabold tracking-wide text-white",
+    compact ? "px-2 py-1 text-[9px]" : "px-3 py-1 text-[10px]",
+  );
+
   return (
     <div
-      className="animate-fade-up"
+      className={cn("animate-fade-up", compact ? "mb-3" : "mb-[18px]")}
       style={{ animationDelay: `${index * 55}ms` }}
     >
-      <div className="mb-3 flex items-end justify-between gap-2 pl-2.5">
-        {clickable && href ? (
-          <Link
-            href={href}
-            className={cn(
-              "rounded-t-[9px] border border-b-0 border-kraft-edge bg-kraft font-mono font-bold tracking-wide text-kraft-ink",
-              compact ? "px-3 py-1 text-[11px]" : "px-4 py-1.5 text-[12.5px]",
-            )}
-          >
-            {app.id}
-          </Link>
-        ) : (
-          <div
-            className={cn(
-              "rounded-t-[9px] border border-b-0 border-kraft-edge bg-kraft font-mono font-bold tracking-wide text-kraft-ink",
-              compact ? "px-3 py-1 text-[11px]" : "px-4 py-1.5 text-[12.5px]",
-            )}
-          >
-            {app.id}
-          </div>
-        )}
-        {actionable ? (
-          <div
-            className={cn(
-              "flex items-center gap-1.5 rounded-t-[7px] bg-accent-deep font-extrabold tracking-wide text-white",
-              compact ? "px-2 py-1 text-[9px]" : "px-3 py-1 text-[10px]",
-            )}
-          >
-            <span className="h-[5px] w-[5px] animate-pulse rounded-full bg-mint" />
-            ACTION NEEDED
-          </div>
-        ) : app.state === "PAUSED" || app.state === "DRAFT" ? (
-          <div
-            className={cn(
-              "rounded-t-[7px] bg-amber font-extrabold tracking-wide text-white",
-              compact ? "px-2 py-1 text-[9px]" : "px-3 py-1 text-[10px]",
-            )}
-          >
-            RESUME
-          </div>
-        ) : null}
-      </div>
-
       <div
         role={clickable ? "button" : undefined}
         tabIndex={clickable ? 0 : undefined}
@@ -139,12 +106,35 @@ export function ApplicationFolderCard({
               }
             : undefined
         }
-        className={cn(
-          "rounded-b-xl rounded-tr-xl border border-kraft-edge bg-kraft p-2.5 shadow-[0_2px_10px_rgba(80,64,26,0.10)]",
-          clickable && "jw-tap cursor-pointer",
-        )}
+        className={cn(clickable && "jw-tap cursor-pointer")}
       >
-        <div className="rounded-lg bg-sheet p-4 shadow-[0_1px_3px_rgba(0,0,0,0.07)]">
+        <div className="flex items-end justify-between gap-2 pl-2.5">
+          {clickable && href ? (
+            <Link href={href} className={idTabClass} onClick={(e) => e.stopPropagation()}>
+              {app.id}
+            </Link>
+          ) : (
+            <div className={idTabClass}>{app.id}</div>
+          )}
+          {actionable ? (
+            <div className={cn(statusTabClass, "bg-accent-deep")}>
+              <span className="h-[5px] w-[5px] animate-pulse rounded-full bg-mint" />
+              ACTION NEEDED
+            </div>
+          ) : app.state === "PAUSED" || app.state === "DRAFT" ? (
+            <div className={cn(statusTabClass, "bg-amber")}>RESUME</div>
+          ) : null}
+        </div>
+
+        <div
+          className="-mt-px rounded-tl-none rounded-tr-xl rounded-b-xl border border-kraft-edge bg-kraft p-2.5 shadow-[0_2px_10px_rgba(80,64,26,0.10)]"
+        >
+          <div
+            className={cn(
+              "rounded-lg bg-sheet shadow-[0_1px_3px_rgba(0,0,0,0.07)]",
+              compact ? "px-3.5 py-3" : "p-4",
+            )}
+          >
           <div className="flex items-baseline justify-between gap-2">
             <span
               className={cn(
@@ -271,6 +261,7 @@ export function ApplicationFolderCard({
               </div>
             </>
           ) : null}
+          </div>
         </div>
       </div>
     </div>

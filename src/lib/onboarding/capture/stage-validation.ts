@@ -2,7 +2,6 @@ import type { CaptureStageKey } from "@/lib/global/shared/routes";
 import { CAPTURE_STAGES } from "@/lib/onboarding/capture/stages";
 import type { CaptureFormState } from "@/lib/onboarding/capture/types";
 import { parseKenyaPhoneForSubmit } from "@/lib/global/auth/normalize-phone";
-import { MIN_DEPOSIT_KES } from "@/lib/onboarding/fixtures/capture-fixtures";
 import { isReadinessComplete } from "@/lib/onboarding/capture/readiness";
 import {
   nationalIdFormatErrorMessage,
@@ -102,10 +101,19 @@ export function validateCaptureStage(
       if (!form.stkVerified && form.stkState !== "confirmed") {
         fieldErrors.stkVerified = "Verify deposit via M-Pesa first.";
       }
-      const min =
-        MIN_DEPOSIT_KES[form.opModel as keyof typeof MIN_DEPOSIT_KES] ?? 0;
-      if (form.deposit < min) {
-        fieldErrors.deposit = `Minimum deposit is KES ${min.toLocaleString()}.`;
+      if (
+        form.productId &&
+        form.quoteMinDepositKes == null &&
+        !form.stkVerified &&
+        form.stkState !== "confirmed"
+      ) {
+        fieldErrors.deposit =
+          "Wait for the server quote before continuing (select product and deposit).";
+      } else if (
+        form.quoteMinDepositKes != null &&
+        form.deposit < form.quoteMinDepositKes
+      ) {
+        fieldErrors.deposit = `Minimum deposit is KES ${form.quoteMinDepositKes.toLocaleString()} (from quote).`;
       }
       break;
     }

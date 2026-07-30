@@ -3,15 +3,12 @@
 import Link from "next/link";
 import { READINESS_ITEMS } from "@/lib/onboarding/capture/stages";
 import type { CaptureFormState } from "@/lib/onboarding/capture/types";
-import {
-  MIN_DEPOSIT_BY_OPERATING_MODEL,
-  MIN_DEPOSIT_KES,
-} from "@/lib/onboarding/fixtures/capture-fixtures";
 import { formatKes } from "@/lib/onboarding/display/format-kes";
 import { AppRoutes } from "@/lib/global/shared/routes";
 import { cn } from "@/lib/utils";
 import { CaptureInlineError } from "@/components/onboarding/capture/capture-inline-error";
 import { isReadinessComplete } from "@/lib/onboarding/capture/readiness";
+import { usePricingRules } from "@/lib/onboarding/use-pricing-rules";
 
 type Props = {
   form: CaptureFormState;
@@ -24,6 +21,7 @@ export function ReadinessStageBody({
   patchForm,
   showValidation = false,
 }: Props) {
+  const { rules, loading: rulesLoading, error: rulesError } = usePricingRules();
   const r = form.readiness;
   const allYes = READINESS_ITEMS.every((it) => r[it.k]);
   const anyChecked = READINESS_ITEMS.some((it) => r[it.k]);
@@ -101,21 +99,33 @@ export function ReadinessStageBody({
           Minimum deposit by operating model
         </p>
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-          {MIN_DEPOSIT_BY_OPERATING_MODEL.map(({ label, key }) => (
-            <div
-              key={key}
-              className="rounded-[10px] bg-white/10 px-3 py-2.5"
-            >
-              <p className="text-[11px] font-semibold text-white/60">{label}</p>
-              <p className="mt-0.5 font-mono text-[15px] font-bold text-white">
-                {formatKes(MIN_DEPOSIT_KES[key])}
-              </p>
-            </div>
-          ))}
+          {rulesLoading ? (
+            <p className="col-span-full text-[12px] text-white/70">
+              Loading minimums…
+            </p>
+          ) : rulesError ? (
+            <p className="col-span-full text-[12px] font-semibold text-amber-200">
+              {rulesError}
+            </p>
+          ) : (
+            rules.map(({ label, operatingModel, minDepositKes }) => (
+              <div
+                key={operatingModel}
+                className="rounded-[10px] bg-white/10 px-3 py-2.5"
+              >
+                <p className="text-[11px] font-semibold text-white/60">
+                  {label}
+                </p>
+                <p className="mt-0.5 font-mono text-[15px] font-bold text-white">
+                  {formatKes(minDepositKes)}
+                </p>
+              </div>
+            ))
+          )}
         </div>
         <p className="mt-2.5 text-[11.5px] leading-snug text-white/55">
-          Read the figure from here, not from memory. The exact minimum is
-          enforced once the operating model is set.
+          Figures come from the server — read them here, not from memory. Deposit
+          minimums on the product step use the live quote for your selection.
         </p>
       </div>
 

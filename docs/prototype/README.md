@@ -18,7 +18,7 @@ Then visit [http://localhost:8080/index.html](http://localhost:8080/index.html).
 |------|---------|
 | [`index.html`](index.html) | Hub — links to all flows |
 | [`auth.html`](auth.html) | Email login + OTP |
-| *(Next.js only)* | CRM magic link → set password — see [`../officer-auth-api-contract.md`](../officer-auth-api-contract.md) |
+| *(Next.js only)* | CRM magic link → set password — see [`../api-contract.md`](../api-contract.md) |
 | [`capture.html`](capture.html) | Ten-stage capture wizard (`?stage=identity`, etc.) |
 | [`desk.html`](desk.html) | Worklist, agreement, release (`?app=A-1042`) |
 | [`prototype.html`](prototype.html) | Full app (`js/app.js`) |

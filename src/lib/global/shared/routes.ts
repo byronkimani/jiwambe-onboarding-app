@@ -42,16 +42,15 @@ export const AppRoutes = {
   apiOnboardingLogout: "/api/onboarding/logout",
   apiOnboardingApplications: "/api/onboarding/applications",
   apiOnboardingApplicationsCurrent: "/api/onboarding/applications/current",
-  apiOnboardingCatalogProducts: "/api/onboarding/catalog/products",
-  apiOnboardingCatalogQuotes: "/api/onboarding/catalog/quotes",
-  apiOnboardingCustomersLookup: "/api/onboarding/customers/lookup",
-  apiOnboardingInventory: "/api/onboarding/inventory",
-  apiOnboardingDepositStk: "/api/onboarding/deposits/stk",
-  apiOnboardingDepositValidate: "/api/onboarding/deposits/validate",
+  apiCustomersSearch: "/api/customers/search",
+  apiCatalogProducts: "/api/catalog/products",
+  apiCatalogQuotes: "/api/catalog/quotes",
+  apiCatalogPricingRules: "/api/catalog/pricing-rules",
+  apiInventory: "/api/inventory",
+  apiPaymentsStk: "/api/payments/stk",
+  apiPaymentsValidate: "/api/payments/validate",
   apiOnboardingE2eResetMocks: "/api/onboarding/e2e/reset-mocks",
 } as const;
-
-export type AppRoute = (typeof AppRoutes)[keyof typeof AppRoutes];
 
 export function captureStage(
   stage: CaptureStageKey,
@@ -166,8 +165,16 @@ export function isProtectedPath(pathname: string): boolean {
   );
 }
 
-export function isApiOnboardingPath(pathname: string): boolean {
-  return pathname.startsWith("/api/onboarding");
+const PROTECTED_API_PREFIXES = [
+  "/api/onboarding",
+  "/api/catalog",
+  "/api/customers",
+  "/api/inventory",
+  "/api/payments",
+] as const;
+
+export function isProtectedApiPath(pathname: string): boolean {
+  return PROTECTED_API_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
 export function isPublicApiOnboardingPath(pathname: string): boolean {

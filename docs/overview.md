@@ -1,13 +1,12 @@
 # Jiwambe Onboarding — Application Overview
 
-**Status:** Active — Spec + infra (Phase 0–1)  
+**Status:** Active — demo UI shipped; upstream integration planned  
 **Product name:** Jiwambe Onboarding  
 **Repository:** `jiwambe-onboarding-app`  
-**Design reference:** [`prototype/`](prototype/) — SSOT for layout and copy  
-**Implementation plan:** [`implementation-plan.md`](implementation-plan.md)  
-**Implementation status:** [`implementation-status.md`](implementation-status.md)  
-**API sketch:** [`onboarding-applications-api-contract.md`](onboarding-applications-api-contract.md) — officer applications (draft); [`field-rider-api-contract.md`](field-rider-api-contract.md) — rider self-serve sketch  
-**Last updated:** 2026-07-29
+**Design reference:** [`prototype/`](prototype/) — layout and copy reference  
+**API:** [`api-contract.md`](api-contract.md)  
+**Status matrix:** [`implementation-status.md`](implementation-status.md)  
+**Last updated:** 2026-07-30
 
 ---
 
@@ -17,7 +16,7 @@ Jiwambe Onboarding is a **tablet-first Progressive Web App (PWA)** used by **onb
 
 This is the **conversion step** for a lead: the customer may have been referred via **jiwambe-agents-app** or may have progressed from the marketing site. **After the asset is released**, the customer manages the bike and payments in **`jiwambe-rider-app`** — not in this app.
 
-The app is a **thin BFF client**: the browser talks only to Next.js; Next.js calls the Jiwambe API (`JIWAMBE_API_BASE_URL`; path namespace **TBD**). **No loan, quote, deposit minimum, or daily installment calculations** in production UI — values are **display-only** from the backend. (The HTML prototype uses client-side demo math; see [`prototype-gaps.md`](prototype-gaps.md).)
+The app is a **thin BFF client**: the browser talks only to Next.js; Next.js calls the Jiwambe platform API at `JIWAMBE_API_BASE_URL`. Onboarding-specific routes use `/onboarding/*`; shared services use `/customers/*`, `/catalog/*`, `/inventory`, `/payments/*` — see [`api-contract.md`](api-contract.md). **No loan or price math in the UI.**
 
 ---
 
@@ -44,7 +43,7 @@ flowchart LR
 
 Agents refer prospects; marketing can drive self-serve interest. Onboarding agents complete field capture and handover. Back-office creates the facility in the LMS and returns applications to agents for agreement and release.
 
-**Note:** [`portal-migration.md`](portal-migration.md) describes **customer portal → rider app**, not this product.
+**Note:** Post-handover servicing uses a separate rider product — not documented here.
 
 ---
 
@@ -124,7 +123,7 @@ Map to split prototype entry points ([`prototype/index.html`](prototype/index.ht
 
 Reference: [`capture.html`](prototype/capture.html), [`js/capture.js`](prototype/js/capture.js)
 
-**Submit** moves application to **OPS_REVIEW** (online) or **queues offline** until sync.
+**Submit** moves the application to **OPS_REVIEW** when online (v1 requires connectivity; no offline submit queue).
 
 ### 6.4 Post-ops (on desk)
 
@@ -177,7 +176,7 @@ Reference: [`capture.html`](prototype/capture.html), [`js/capture.js`](prototype
 ## 9. UX and device
 
 - **Tablet-first** — step rail + wide content (prototype); installable PWA on dealership devices
-- **Offline-first** — capture may continue offline; submissions queue and sync ([`TopBar`](prototype/js/chrome.js) connectivity + queue)
+- **Online v1** — capture and submit require network; connectivity shown in chrome (no offline mutation queue)
 - **Dealership context** — stock filtered by agent’s hub; officer profile and station in chrome
 
 ---
@@ -194,10 +193,9 @@ Implemented as shells in Phase 2 (see [`implementation-plan.md`](implementation-
 | `/desk/drafts` | Paused / draft applications |
 | `/capture` | Wizard shell (redirect to first stage) |
 | `/capture/[stage]` | Capture stage (`readiness` … `review`) |
-| `/offline` | No connection |
 | `/account-blocked` | Agent account disabled |
 
-**BFF:** `/api/onboarding/*` keys in [`routes.ts`](../src/lib/global/shared/routes.ts); officer applications per [`onboarding-applications-api-contract.md`](onboarding-applications-api-contract.md).
+**BFF:** [`routes.ts`](../src/lib/global/shared/routes.ts) + [`api-contract.md`](api-contract.md).
 
 ---
 

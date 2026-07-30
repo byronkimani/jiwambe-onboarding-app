@@ -17,7 +17,7 @@ export const SEED_NOTIFICATIONS: OnboardingNotification[] = [
   {
     id: "n2",
     title: "Sync complete",
-    body: "3 queued capture photos uploaded.",
+    body: "3 capture photos uploaded.",
     time: "1 hr ago",
     unread: true,
   },

@@ -19,7 +19,7 @@ export const CATALOG_PRODUCTS = [
   { id: "kofa-r", label: "Kofa R2", priceNew: 282000, priceUsed: 190000 },
 ];
 
-/** Field minimum deposit by operating model — display only (prototype `data.js`). */
+/** Field minimum deposit by operating model — BFF `catalog/pricing-rules` only; not for client import. */
 export const MIN_DEPOSIT_KES = {
   FLEET: 5000,
   STAGE: 10000,
@@ -57,30 +57,3 @@ export const INVENTORY_BIKES = [
     status: "available",
   },
 ];
-
-/** Pre-seeded quote rows — display only, not computed on the client. */
-export const QUOTE_TABLE: Record<
-  string,
-  { deposit: number; dailyKes: number; minDeposit: number }
-> = {
-  "spiro-tv:10000": { deposit: 10000, dailyKes: 540, minDeposit: 5000 },
-  "spiro-tv:15000": { deposit: 15000, dailyKes: 510, minDeposit: 5000 },
-  "tankvolt-x:10000": { deposit: 10000, dailyKes: 520, minDeposit: 10000 },
-  "tankvolt-x:15000": { deposit: 15000, dailyKes: 490, minDeposit: 10000 },
-  "kofa-r:14000": { deposit: 14000, dailyKes: 560, minDeposit: 10000 },
-};
-
-export function lookupQuote(
-  productId: string,
-  deposit: number,
-): { dailyKes: number; minDeposit: number } | null {
-  const key = `${productId}:${deposit}`;
-  const row = QUOTE_TABLE[key];
-  if (row) return { dailyKes: row.dailyKes, minDeposit: row.minDeposit };
-  const fallbackKey = Object.keys(QUOTE_TABLE).find((k) =>
-    k.startsWith(`${productId}:`),
-  );
-  if (!fallbackKey) return null;
-  const fallback = QUOTE_TABLE[fallbackKey];
-  return { dailyKes: fallback.dailyKes, minDeposit: fallback.minDeposit };
-}

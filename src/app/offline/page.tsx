@@ -19,10 +19,10 @@ export default function OfflinePage() {
           >
             <span className="text-2xl">📡</span>
           </div>
-          <h1 className="mt-4 text-xl font-bold text-ink">You&apos;re offline</h1>
+          <h1 className="mt-4 text-xl font-bold text-ink">No connection</h1>
           <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-            Check your connection and try again. Queued capture steps sync when
-            you&apos;re back online.
+            This app needs an internet connection. Check Wi‑Fi or mobile data,
+            then try again. Your work is not saved while offline.
           </p>
           <Button
             className="mt-6 w-full"
