@@ -57,6 +57,7 @@ export function DeskBoardView({ apps, onDemoAdvance }: Props) {
                     className="jw-tap mb-2.5 mt-1 block w-full cursor-pointer rounded-lg border border-dashed border-line-strong bg-transparent px-2.5 py-1.5 font-sans text-[11px] font-bold text-slate"
                     onClick={() => onDemoAdvance(a.id, "LMS_CREATED")}
                   >
+                    {/* TODO(prod): remove when CRM drives lifecycle transitions. */}
                     ▶ Demo: ops approves {a.id} → LMS
                   </button>
                 ))

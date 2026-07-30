@@ -6,6 +6,36 @@ const TINY_PNG = Buffer.from(
   "base64",
 );
 
+const TINY_PDF = Buffer.from(
+  "%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF",
+  "utf8",
+);
+
+async function uploadFileAtIndex(
+  page: Page,
+  index: number,
+  file: { name: string; mimeType: string; buffer: Buffer },
+): Promise<void> {
+  const fileInputs = page.locator('input[type="file"]');
+  await fileInputs.nth(index).setInputFiles(file);
+}
+
+async function waitForDocumentCompletes(
+  page: Page,
+  count: number,
+): Promise<void> {
+  for (let i = 0; i < count; i += 1) {
+    await page.waitForResponse(
+      (res) =>
+        res.url().includes("/documents/") &&
+        res.url().includes("/complete") &&
+        res.request().method() === "POST" &&
+        res.ok(),
+      { timeout: 30_000 },
+    );
+  }
+}
+
 export async function clickContinue(page: Page): Promise<void> {
   const primary = page.getByRole("button", {
     name: /^(Continue|Customer is ready — start|Submit to backoffice)$/i,
@@ -24,7 +54,22 @@ export async function completeReadiness(page: Page): Promise<void> {
 export async function selectPortalCustomer(
   page: Page,
   name: string,
+  searchQuery = "0712 334 556",
 ): Promise<void> {
+  await page.getByPlaceholder("Search phone or National ID").fill(searchQuery);
+  await Promise.all([
+    page.waitForResponse(
+      (res) =>
+        res.url().includes("/api/customers/search") &&
+        res.request().method() === "POST" &&
+        res.ok(),
+      { timeout: 30_000 },
+    ),
+    page.getByRole("button", { name: /search portal/i }).click(),
+  ]);
+  await page
+    .getByRole("button", { name: new RegExp(name, "i") })
+    .waitFor({ timeout: 15_000 });
   await page.getByRole("button", { name: new RegExp(name, "i") }).click();
   await Promise.all([
     page.waitForURL(/\/capture\/identity/, { timeout: 30_000 }),
@@ -37,19 +82,39 @@ export async function completeIdentityStage(page: Page): Promise<void> {
   const textboxes = page.getByRole("textbox");
   await textboxes.nth(0).fill("E2E Test Rider");
   await textboxes.nth(1).fill("0712334456");
-  await textboxes.nth(2).fill("12345678");
-  await textboxes.nth(3).fill("Nairobi");
-  const fileInputs = page.locator('input[type="file"]');
-  await fileInputs.nth(0).setInputFiles({
-    name: "id.jpg",
+  await textboxes.nth(2).fill("28459912");
+  await page.locator("select").first().selectOption("male");
+  await page.locator('input[type="date"]').fill("1990-05-15");
+  // Index 3 = DOB, 4 = email; county and KRA follow address fields.
+  await textboxes.nth(5).fill("Nairobi");
+  await textboxes.nth(9).fill("A012345678X");
+
+  await uploadFileAtIndex(page, 0, {
+    name: "id-front.jpg",
     mimeType: "image/jpeg",
     buffer: TINY_PNG,
   });
-  await fileInputs.nth(1).setInputFiles({
+  await uploadFileAtIndex(page, 1, {
+    name: "id-back.jpg",
+    mimeType: "image/jpeg",
+    buffer: TINY_PNG,
+  });
+  await uploadFileAtIndex(page, 2, {
+    name: "kra.pdf",
+    mimeType: "application/pdf",
+    buffer: TINY_PDF,
+  });
+  await uploadFileAtIndex(page, 3, {
     name: "selfie.jpg",
     mimeType: "image/jpeg",
     buffer: TINY_PNG,
   });
+
+  await waitForDocumentCompletes(page, 4);
+
+  await expect(
+    page.getByRole("button", { name: /^Continue$/i }),
+  ).toBeEnabled({ timeout: 15_000 });
   await Promise.all([
     page.waitForURL(/\/capture\/dl/, { timeout: 30_000 }),
     clickContinue(page),
@@ -60,6 +125,20 @@ export async function completeDlStage(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/capture\/dl/);
   await page.locator("select").first().selectOption("smart");
   await page.getByRole("textbox").fill("DL123456");
+  await uploadFileAtIndex(page, 0, {
+    name: "dl-front.jpg",
+    mimeType: "image/jpeg",
+    buffer: TINY_PNG,
+  });
+  await uploadFileAtIndex(page, 1, {
+    name: "dl-back.jpg",
+    mimeType: "image/jpeg",
+    buffer: TINY_PNG,
+  });
+  await waitForDocumentCompletes(page, 2);
+  await expect(
+    page.getByRole("button", { name: /^Continue$/i }),
+  ).toBeEnabled({ timeout: 15_000 });
   await Promise.all([
     page.waitForURL(/\/capture\/cogc/, { timeout: 30_000 }),
     clickContinue(page),
@@ -69,6 +148,15 @@ export async function completeDlStage(page: Page): Promise<void> {
 export async function completeCogcStage(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/capture\/cogc/);
   await page.locator("select").first().selectOption("have");
+  await uploadFileAtIndex(page, 0, {
+    name: "cogc.pdf",
+    mimeType: "application/pdf",
+    buffer: TINY_PDF,
+  });
+  await waitForDocumentCompletes(page, 1);
+  await expect(
+    page.getByRole("button", { name: /^Continue$/i }),
+  ).toBeEnabled({ timeout: 15_000 });
   await Promise.all([
     page.waitForURL(/\/capture\/references/, { timeout: 30_000 }),
     clickContinue(page),
@@ -76,10 +164,13 @@ export async function completeCogcStage(page: Page): Promise<void> {
 }
 
 export async function completeReferencesStage(page: Page): Promise<void> {
+  const cards = page.locator("div.rounded-2xl.border.border-line.p-4");
   for (let i = 0; i < 3; i += 1) {
-    await page.getByPlaceholder("Name").nth(i).fill(`Ref ${i + 1}`);
-    await page.getByPlaceholder("Relationship").nth(i).fill("Friend");
-    await page.getByPlaceholder(/07XX/i).nth(i).fill(`71200000${i}`);
+    const card = cards.nth(i);
+    await card.getByPlaceholder("Name").fill(`Ref ${i + 1}`);
+    await card.locator("input").nth(1).fill(`1234567${i}`);
+    await card.locator("select").selectOption("friend");
+    await card.getByPlaceholder(/07XX/i).fill(`71200000${i}`);
   }
   await page
     .getByText("Customer consents to reference verification calls")
@@ -95,6 +186,7 @@ export async function completeModelStage(page: Page): Promise<void> {
   const fleet = page.getByRole("button", { name: "FLEET" });
   await fleet.click();
   await expect(fleet).toHaveClass(/bg-accent/);
+  await page.getByRole("button", { name: /active bolt driver/i }).click();
   await Promise.all([
     page.waitForURL(/\/capture\/product/, { timeout: 30_000 }),
     clickContinue(page),

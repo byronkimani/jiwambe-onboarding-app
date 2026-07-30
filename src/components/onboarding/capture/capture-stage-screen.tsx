@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CaptureStageKey } from "@/lib/global/shared/routes";
 import { AppRoutes } from "@/lib/global/shared/routes";
 import {
@@ -14,12 +14,17 @@ import { CaptureApplicationResume } from "@/components/onboarding/capture/captur
 import { CaptureChromeLayout } from "@/components/onboarding/capture/capture-chrome-layout";
 import { StageShell } from "@/components/onboarding/capture/stage-shell";
 import { CaptureStageBody } from "@/components/onboarding/capture/stages/capture-stage-body";
+import { UnsavedChangesModal } from "@/components/onboarding/capture/unsaved-changes-modal";
 import { ReasonModal } from "@/components/onboarding/chrome/reason-modal";
 import {
   captureStageCompleteMap,
   captureStageMeta,
 } from "@/lib/onboarding/capture/capture-progress";
-import { validateCaptureStage, isFormReadyForSubmit } from "@/lib/onboarding/capture/stage-validation";
+import {
+  validateCaptureStage,
+  isFormReadyForSubmit,
+  stageBlockedByDocumentUploads,
+} from "@/lib/onboarding/capture/stage-validation";
 import { toast } from "sonner";
 
 type Props = { stage: CaptureStageKey };
@@ -44,27 +49,84 @@ export function CaptureStageScreen({ stage }: Props) {
     referenceCode,
     patching,
     apiError,
+    isDirty,
+    documentUploads,
     createApplicationFromReadiness,
     patchApplicationForStage,
+    saveDraftForStage,
     pauseApplication,
     submitApplication,
     disqualifyApplication,
+    resetForm,
   } = useCaptureWizard();
   const [showValidation, setShowValidation] = useState(false);
   const [pauseModalOpen, setPauseModalOpen] = useState(false);
   const [disqualifyModalOpen, setDisqualifyModalOpen] = useState(false);
+  const [leaveModalOpen, setLeaveModalOpen] = useState(false);
+  const [leaveSaving, setLeaveSaving] = useState(false);
 
   const validation = validateCaptureStage(stage, form);
-  const canContinue = validation.ok && !patching;
+  const uploadBlocked = stageBlockedByDocumentUploads(
+    stage,
+    form,
+    documentUploads,
+  );
+  const canContinue = validation.ok && !patching && !uploadBlocked;
   const canPause =
-    PAUSE_STAGES.includes(stage) && Boolean(referenceCode) && !patching;
+    PAUSE_STAGES.includes(stage) &&
+    Boolean(referenceCode) &&
+    !patching &&
+    !uploadBlocked;
 
   const readyToSubmit =
     Boolean(referenceCode) && !patching && isFormReadyForSubmit(form);
   const reviewValidation = validateCaptureStage("review", form);
 
+  useEffect(() => {
+    if (!isDirty) return;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [isDirty]);
+
   function captureRefForNav(): string | undefined {
     return referenceCode ?? applicationQuery ?? undefined;
+  }
+
+  function navigateToDesk() {
+    router.push(AppRoutes.desk);
+  }
+
+  function requestLeaveCapture() {
+    if (!isDirty) {
+      resetForm();
+      navigateToDesk();
+      return;
+    }
+    setLeaveModalOpen(true);
+  }
+
+  async function confirmSaveDraftAndLeave() {
+    setLeaveSaving(true);
+    const ok = referenceCode
+      ? await saveDraftForStage(stage)
+      : true;
+    setLeaveSaving(false);
+    if (!ok) {
+      toast.error(apiError ?? "Could not save draft.");
+      return;
+    }
+    setLeaveModalOpen(false);
+    resetForm();
+    navigateToDesk();
+  }
+
+  function confirmDiscardAndLeave() {
+    setLeaveModalOpen(false);
+    resetForm();
+    navigateToDesk();
   }
 
   async function goNext() {
@@ -73,6 +135,10 @@ export function CaptureStageScreen({ stage }: Props) {
     if (!result.ok) {
       const first = Object.values(result.fieldErrors)[0];
       toast.error(first ?? "Complete required fields.");
+      return;
+    }
+    if (uploadBlocked) {
+      toast.error("Wait for document uploads to finish.");
       return;
     }
 
@@ -146,7 +212,7 @@ export function CaptureStageScreen({ stage }: Props) {
       router.push(captureStagePath(prev, captureRefForNav()));
       return;
     }
-    router.push(AppRoutes.desk);
+    requestLeaveCapture();
   }
 
   const meta = captureStageMeta(stage);
@@ -212,6 +278,13 @@ export function CaptureStageScreen({ stage }: Props) {
           ) : null}
         </StageShell>
       </CaptureChromeLayout>
+      <UnsavedChangesModal
+        open={leaveModalOpen}
+        saving={leaveSaving}
+        onSaveDraft={() => void confirmSaveDraftAndLeave()}
+        onDiscard={confirmDiscardAndLeave}
+        onCancel={() => setLeaveModalOpen(false)}
+      />
       <ReasonModal
         open={pauseModalOpen}
         title="Pause application"

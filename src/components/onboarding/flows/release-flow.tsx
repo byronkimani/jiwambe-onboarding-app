@@ -1,17 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { OnboardingApplication } from "@/lib/onboarding/types";
 import { LifelineStrip } from "@/components/onboarding/desk/lifeline-strip";
 import { OnboardingTopBar } from "@/components/onboarding/chrome/top-bar";
-import { PhotoSlot } from "@/components/onboarding/atoms/photo-slot";
+import { DocumentSlot } from "@/components/onboarding/atoms/document-slot";
 import { ProtoBtn, ProtoInput } from "@/components/onboarding/atoms/proto-field";
 import {
   PDI_ITEMS,
   RELEASE_OTP_DEMO,
 } from "@/lib/onboarding/flows/release-constants";
 import { AppRoutes } from "@/lib/global/shared/routes";
+import {
+  apiReleaseComplete,
+  apiReleaseSendOtp,
+} from "@/lib/onboarding/ceremony/ceremony-api";
+import { uploadApplicationDocument } from "@/lib/onboarding/documents/upload-application-document";
+import { toast } from "sonner";
 
 function TickRow({
   label,
@@ -34,12 +40,32 @@ function TickRow({
   );
 }
 
-export function ReleaseFlow({ app }: { app: OnboardingApplication }) {
+export function ReleaseFlow({
+  app,
+  applicationRef,
+  handoverPhotoUrl,
+  onApplicationUpdated,
+}: {
+  app: OnboardingApplication;
+  applicationRef: string;
+  handoverPhotoUrl?: string | null;
+  onApplicationUpdated?: () => void;
+}) {
   const [pdi, setPdi] = useState<Record<string, boolean>>({});
   const [conf, setConf] = useState<Record<string, boolean>>({});
-  const [handoverPhoto, setHandoverPhoto] = useState<string | null>(null);
+  const [handoverPhoto, setHandoverPhoto] = useState<string | null>(
+    handoverPhotoUrl ?? null,
+  );
+  const [handoverDocId, setHandoverDocId] = useState<string | null>(null);
+  const [handoverUploading, setHandoverUploading] = useState(false);
+  const [handoverError, setHandoverError] = useState<string | null>(null);
   const [otp, setOtp] = useState("");
-  const [released, setReleased] = useState(false);
+  const [released, setReleased] = useState(app.state === "ACTIVE_LOAN");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    void apiReleaseSendOtp(applicationRef);
+  }, [applicationRef]);
 
   const bike = app.bike;
   if (!bike) {
@@ -57,8 +83,48 @@ export function ReleaseFlow({ app }: { app: OnboardingApplication }) {
     { k: "releaseLog", label: "Client signed the asset release log" },
   ];
   const confOk = confirmItems.every((i) => conf[i.k]);
-  const otpOk = otp === RELEASE_OTP_DEMO;
-  const canRelease = pdiOk && confOk && handoverPhoto && otpOk;
+  const otpOk = otp.length >= 4;
+  const canRelease = pdiOk && confOk && handoverDocId && otpOk && !busy;
+
+  async function captureHandover(file: File) {
+    setHandoverUploading(true);
+    setHandoverError(null);
+    const preview = URL.createObjectURL(file);
+    setHandoverPhoto(preview);
+    try {
+      const uploaded = await uploadApplicationDocument({
+        applicationId: applicationRef,
+        purpose: "handover_photo",
+        file,
+      });
+      setHandoverPhoto(uploaded.url);
+      setHandoverDocId(uploaded.documentId);
+      onApplicationUpdated?.();
+    } catch {
+      setHandoverError("Upload failed. Try again.");
+      setHandoverPhoto(null);
+      setHandoverDocId(null);
+    } finally {
+      setHandoverUploading(false);
+    }
+  }
+
+  async function confirmRelease() {
+    setBusy(true);
+    const result = await apiReleaseComplete(applicationRef, {
+      otp,
+      pdi,
+      confirmations: conf,
+      handoverDocumentId: handoverDocId ?? undefined,
+    });
+    setBusy(false);
+    if (!result.ok) {
+      toast.error("Could not complete release.");
+      return;
+    }
+    setReleased(true);
+    onApplicationUpdated?.();
+  }
 
   if (released) {
     return (
@@ -160,13 +226,23 @@ export function ReleaseFlow({ app }: { app: OnboardingApplication }) {
           </div>
 
           <div className="mb-3.5 rounded-2xl border border-line bg-card p-5">
-            <p className="text-[14.5px] font-bold text-ink">Handover photo</p>
-            <PhotoSlot
+            <DocumentSlot
               label="Officer + customer with bike"
               required
+              preferCamera
               image={handoverPhoto}
-              onCapture={setHandoverPhoto}
-              onRetake={() => setHandoverPhoto(null)}
+              uploading={handoverUploading}
+              uploadError={handoverError}
+              onCapture={(file) => void captureHandover(file)}
+              onRetry={() => {
+                /* retake clears local state only */
+                setHandoverPhoto(null);
+                setHandoverDocId(null);
+              }}
+              onRetake={() => {
+                setHandoverPhoto(null);
+                setHandoverDocId(null);
+              }}
             />
           </div>
 
@@ -185,8 +261,8 @@ export function ReleaseFlow({ app }: { app: OnboardingApplication }) {
             />
           </div>
 
-          <ProtoBtn disabled={!canRelease} onClick={() => setReleased(true)}>
-            Confirm bike release
+          <ProtoBtn disabled={!canRelease} onClick={() => void confirmRelease()}>
+            {busy ? "Releasing…" : "Confirm bike release"}
           </ProtoBtn>
           <Link
             href={AppRoutes.desk}

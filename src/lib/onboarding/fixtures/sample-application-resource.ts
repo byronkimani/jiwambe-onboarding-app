@@ -100,6 +100,20 @@ export const SAMPLE_APPLICATION_RESOURCE: OnboardingApplicationResource = {
         called: true,
         callOutcome: "confirmed",
       },
+      {
+        name: "Peter Kamau",
+        nationalId: "23456789",
+        phone: "+254723456789",
+        relationship: "friend",
+        called: true,
+      },
+      {
+        name: "Grace Njeri",
+        nationalId: "34567890",
+        phone: "+254734567890",
+        relationship: "colleague",
+        called: false,
+      },
     ],
     nextOfKin: {
       name: "Jane Doe",

@@ -9,6 +9,8 @@ import { OnboardingTopBar } from "@/components/onboarding/chrome/top-bar";
 import { AgreementViewer } from "@/components/onboarding/flows/agreement-viewer";
 import { ProtoBtn } from "@/components/onboarding/atoms/proto-field";
 import { AppRoutes } from "@/lib/global/shared/routes";
+import { apiAgreementAction } from "@/lib/onboarding/ceremony/ceremony-api";
+import { toast } from "sonner";
 
 type Step = "summary" | "generating" | "generated" | "signed" | "sending" | "sent";
 
@@ -20,27 +22,70 @@ function FlowPanel({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function AgreementFlow({ app }: { app: OnboardingApplication }) {
+export function AgreementFlow({
+  app,
+  applicationRef,
+  onApplicationUpdated,
+}: {
+  app: OnboardingApplication;
+  applicationRef: string;
+  onApplicationUpdated?: () => void;
+}) {
   const [step, setStep] = useState<Step>("summary");
   const [readDone, setReadDone] = useState(false);
   const [clientSigned, setClientSigned] = useState(false);
   const [officerSigned, setOfficerSigned] = useState(false);
   const [smsOpened, setSmsOpened] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const generatedOn = ["generated", "signed", "sending", "sent"].includes(step);
   const signedOn = ["signed", "sending", "sent"].includes(step);
 
-  function generate() {
+  async function generate() {
     setStep("generating");
-    window.setTimeout(() => setStep("generated"), 1400);
+    setBusy(true);
+    const result = await apiAgreementAction(applicationRef, { action: "generate" });
+    setBusy(false);
+    if (!result.ok) {
+      toast.error("Could not generate agreement.");
+      setStep("summary");
+      return;
+    }
+    onApplicationUpdated?.();
+    setStep("generated");
   }
 
-  function sendSms() {
+  async function captureOfficerSignature() {
+    setBusy(true);
+    const result = await apiAgreementAction(applicationRef, {
+      action: "sign",
+      clientSigned: true,
+      officerSigned: true,
+    });
+    setBusy(false);
+    if (!result.ok) {
+      toast.error("Could not record signatures.");
+      return;
+    }
+    setClientSigned(true);
+    setOfficerSigned(true);
+    setStep("signed");
+    onApplicationUpdated?.();
+  }
+
+  async function sendSms() {
     setStep("sending");
-    window.setTimeout(() => {
-      setStep("sent");
-      setSmsOpened(true);
-    }, 1100);
+    setBusy(true);
+    const result = await apiAgreementAction(applicationRef, { action: "send_sms" });
+    setBusy(false);
+    if (!result.ok) {
+      toast.error("Could not send SMS copy.");
+      setStep("signed");
+      return;
+    }
+    setStep("sent");
+    setSmsOpened(true);
+    onApplicationUpdated?.();
   }
 
   return (
@@ -102,7 +147,7 @@ export function AgreementFlow({ app }: { app: OnboardingApplication }) {
               what will appear in the document.
             </p>
             {step === "summary" ? (
-              <ProtoBtn small className="mt-3" onClick={generate}>
+              <ProtoBtn small className="mt-3" disabled={busy} onClick={() => void generate()}>
                 Generate agreement PDF
               </ProtoBtn>
             ) : null}
@@ -153,7 +198,7 @@ export function AgreementFlow({ app }: { app: OnboardingApplication }) {
                 {(
                   [
                     ["Client — borrower", clientSigned, app.name],
-                    ["Officer — company rep", officerSigned, "Jane Ochieng"],
+                    ["Officer — company rep", officerSigned, app.officer],
                   ] as const
                 ).map(([role, signed, who]) => (
                   <div
@@ -171,13 +216,17 @@ export function AgreementFlow({ app }: { app: OnboardingApplication }) {
                     <ProtoBtn
                       small
                       className="mt-2 w-full"
-                      disabled={!readDone || (role.startsWith("Officer") && !clientSigned)}
+                      disabled={
+                        busy ||
+                        !readDone ||
+                        (role.startsWith("Officer") && !clientSigned) ||
+                        (role.startsWith("Client") && clientSigned)
+                      }
                       onClick={() => {
                         if (role.startsWith("Client")) {
                           setClientSigned(true);
                         } else {
-                          setOfficerSigned(true);
-                          setStep("signed");
+                          void captureOfficerSignature();
                         }
                       }}
                     >
@@ -199,7 +248,7 @@ export function AgreementFlow({ app }: { app: OnboardingApplication }) {
                 phone.
               </p>
               {step === "signed" ? (
-                <ProtoBtn small className="mt-3" onClick={sendSms}>
+                <ProtoBtn small className="mt-3" disabled={busy} onClick={() => void sendSms()}>
                   Send SMS copy
                 </ProtoBtn>
               ) : null}

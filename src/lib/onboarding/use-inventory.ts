@@ -1,5 +1,6 @@
 "use client";
 
+import { bffFetch } from "@/lib/global/client/bff-fetch";
 import { useEffect, useState } from "react";
 import {
   InventoryItem,
@@ -22,7 +23,7 @@ export function useInventory(dealershipId?: string | null) {
       const params = dealershipId
         ? `?dealershipId=${encodeURIComponent(dealershipId)}`
         : "";
-      const response = await fetch(
+      const response = await bffFetch(
         `${AppRoutes.apiInventory}${params}`,
         { credentials: "same-origin" },
       );

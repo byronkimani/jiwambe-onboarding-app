@@ -61,6 +61,19 @@ export function parseKenyaPhoneForSubmit(raw: string): ParseKenyaPhoneResult {
   }
 }
 
+/** National (`07…`) or wire (`254…`) input → wire MSISDN, or null if invalid. */
+export function resolveKenyaPhoneWire(raw: string): string | null {
+  const parsed = parseKenyaPhoneForSubmit(raw);
+  if (parsed.ok) {
+    return parsed.wire;
+  }
+  const digits = extractPhoneDigits(raw);
+  if (kenyaMsisdnWireSchema.safeParse(digits).success) {
+    return digits;
+  }
+  return null;
+}
+
 export const kenyaMsisdnWireSchema = z
   .string()
   .regex(KENYA_MSISDN_WIRE_REGEX, KENYA_PHONE_VALIDATION_MESSAGE);

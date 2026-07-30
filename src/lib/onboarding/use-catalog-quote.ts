@@ -1,5 +1,6 @@
 "use client";
 
+import { bffFetch } from "@/lib/global/client/bff-fetch";
 import { useEffect, useState } from "react";
 import { AppRoutes } from "@/lib/global/shared/routes";
 
@@ -62,7 +63,7 @@ export function useCatalogQuote(input: CatalogQuoteInput) {
       setError(null);
       setQuote(null);
       try {
-        const response = await fetch(AppRoutes.apiCatalogQuotes, {
+        const response = await bffFetch(AppRoutes.apiCatalogQuotes, {
           method: "POST",
           credentials: "same-origin",
           headers: { "Content-Type": "application/json" },

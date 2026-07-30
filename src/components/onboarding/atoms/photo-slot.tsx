@@ -8,10 +8,14 @@ type PhotoSlotProps = {
   label: string;
   required?: boolean;
   image?: string | null;
-  onCapture: (url: string) => void;
+  onCapture: (file: File) => void;
   onRetake: () => void;
+  onRetry?: () => void;
+  captureDisabled?: boolean;
   showValidation?: boolean;
   validationMessage?: string | null;
+  uploading?: boolean;
+  uploadError?: string | null;
 };
 
 export function PhotoSlot({
@@ -20,8 +24,12 @@ export function PhotoSlot({
   image,
   onCapture,
   onRetake,
+  onRetry,
+  captureDisabled = false,
   showValidation = false,
   validationMessage,
+  uploading = false,
+  uploadError = null,
 }: PhotoSlotProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [zoom, setZoom] = useState(false);
@@ -33,7 +41,7 @@ export function PhotoSlot({
   function onFile(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    onCapture(URL.createObjectURL(file));
+    onCapture(file);
     event.target.value = "";
   }
 
@@ -56,7 +64,7 @@ export function PhotoSlot({
       <div className="mb-2.5 flex items-center justify-between">
         <span className="text-[13px] font-bold text-ink">{label}</span>
         <ProtoTag tone={required ? "req" : "info"}>
-          {required ? "Required" : "Optional"}
+          {uploading ? "Uploading…" : required ? "Required" : "Optional"}
         </ProtoTag>
       </div>
       {image ? (
@@ -69,10 +77,21 @@ export function PhotoSlot({
               className="h-[120px] w-full cursor-zoom-in rounded-[10px] border border-line bg-white object-cover"
             />
           </button>
-          <div className="mt-2 flex justify-end">
+          <div className="mt-2 flex flex-wrap items-center justify-end gap-3">
+            {uploadError && onRetry ? (
+              <button
+                type="button"
+                className="text-xs font-bold text-accent-deep underline"
+                disabled={uploading}
+                onClick={() => onRetry()}
+              >
+                Retry upload
+              </button>
+            ) : null}
             <button
               type="button"
               className="text-xs font-bold text-ink-soft underline"
+              disabled={uploading}
               onClick={() => {
                 onRetake();
               }}
@@ -85,15 +104,22 @@ export function PhotoSlot({
         <button
           type="button"
           className="jw-tap flex w-full items-center justify-center gap-2 rounded-[10px] border-[1.5px] border-dashed border-line-strong bg-card py-3.5 text-[13px] font-bold text-ink-soft"
+          disabled={uploading || captureDisabled}
           onClick={pick}
         >
-          📷 Capture with tablet camera
+          📷{" "}
+          {uploading
+            ? "Uploading…"
+            : captureDisabled
+              ? "Complete readiness first"
+              : "Capture with tablet camera"}
         </button>
       )}
       <CaptureInlineError
         show={showValidation && !image}
         message={validationMessage ?? `${label} is required.`}
       />
+      <CaptureInlineError show={Boolean(uploadError)} message={uploadError} />
       {zoom && image ? (
         <div
           className="fixed inset-0 z-[90] flex cursor-zoom-out flex-col items-center justify-center bg-[rgba(12,13,16,0.85)] p-6"

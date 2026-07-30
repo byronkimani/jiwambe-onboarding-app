@@ -5,10 +5,7 @@ import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "@/auth.config";
 import { authorizeOfficerOtpCredentials } from "@/lib/global/auth/officer-otp-authorize";
 import { OtpVerifyError } from "@/lib/global/auth/otp-verify-error";
-import {
-  accessTokenNeedsRefresh,
-  refreshOfficerTokens,
-} from "@/lib/global/auth/officer-auth-upstream";
+import { refreshOfficerJwtIfNeeded } from "@/lib/global/auth/refresh-officer-jwt";
 
 declare module "next-auth" {
   interface Session {
@@ -85,20 +82,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return jwt as JWT;
       }
 
-      if (
-        jwt.refreshToken &&
-        accessTokenNeedsRefresh(jwt.accessTokenExpiresAt)
-      ) {
-        const refreshed = await refreshOfficerTokens(jwt.refreshToken);
-        if (!refreshed.ok) {
-          jwt.error = "RefreshError";
-          return jwt;
-        }
-        jwt.accessToken = refreshed.accessToken;
-        jwt.refreshToken = refreshed.refreshToken;
-        jwt.accessTokenExpiresAt = refreshed.accessTokenExpiresAt;
-        jwt.backendAccessToken = refreshed.accessToken;
-        jwt.backendRefreshToken = refreshed.refreshToken;
+      const refreshedJwt = await refreshOfficerJwtIfNeeded(jwt);
+      if (refreshedJwt.accessToken) {
+        jwt.accessToken = refreshedJwt.accessToken;
+        jwt.backendAccessToken = refreshedJwt.accessToken;
+      }
+      if (refreshedJwt.refreshToken) {
+        jwt.refreshToken = refreshedJwt.refreshToken;
+        jwt.backendRefreshToken = refreshedJwt.refreshToken;
+      }
+      if (refreshedJwt.accessTokenExpiresAt) {
+        jwt.accessTokenExpiresAt = refreshedJwt.accessTokenExpiresAt;
+      }
+      if (refreshedJwt.error) {
+        jwt.error = refreshedJwt.error;
+      } else {
+        delete jwt.error;
       }
 
       return jwt as JWT;

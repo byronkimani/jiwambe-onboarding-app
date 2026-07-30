@@ -40,6 +40,8 @@ export const AppRoutes = {
   apiOnboardingAuthPasswordResetPassword:
     "/api/onboarding/auth/password/reset/password",
   apiOnboardingLogout: "/api/onboarding/logout",
+  apiOnboardingAgentsProfile: "/api/onboarding/agents/profile",
+  apiOnboardingMockDocumentUpload: "/api/onboarding/mock/documents",
   apiOnboardingApplications: "/api/onboarding/applications",
   apiOnboardingApplicationsCurrent: "/api/onboarding/applications/current",
   apiCustomersSearch: "/api/customers/search",
@@ -94,6 +96,21 @@ export function apiOnboardingApplicationDisqualify(id: string): string {
 
 export function apiOnboardingApplicationSubmit(id: string): string {
   return `${apiOnboardingApplication(id)}/submit`;
+}
+
+export function apiOnboardingMockDocumentUpload(documentId: string): string {
+  return `${AppRoutes.apiOnboardingMockDocumentUpload}/${encodeURIComponent(documentId)}/upload`;
+}
+
+export function apiOnboardingApplicationDocumentInit(id: string): string {
+  return `${apiOnboardingApplication(id)}/documents/init`;
+}
+
+export function apiOnboardingApplicationDocumentComplete(
+  id: string,
+  documentId: string,
+): string {
+  return `${apiOnboardingApplication(id)}/documents/${encodeURIComponent(documentId)}/complete`;
 }
 
 export function apiOnboardingApplicationAgreement(id: string): string {

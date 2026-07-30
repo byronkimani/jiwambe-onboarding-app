@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { bffFetch } from "@/lib/global/client/bff-fetch";
+import { useCallback, useEffect, useState } from "react";
 import type { OnboardingApplicationResource } from "@/lib/onboarding/application-resource";
 import { mapResourceToDeskCard } from "@/lib/onboarding/map-resource-to-desk-card";
 import type { OnboardingApplication } from "@/lib/onboarding/types";
@@ -15,12 +16,13 @@ export function useApplication(id: string) {
     useState<OnboardingApplicationResource | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       setLoading(true);
-      const response = await fetch(apiOnboardingApplication(id));
+      const response = await bffFetch(apiOnboardingApplication(id));
       if (!response.ok) {
         if (!cancelled) {
           setError("not_found");
@@ -49,7 +51,11 @@ export function useApplication(id: string) {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, reloadToken]);
 
-  return { application, resource, loading, error };
+  const reload = useCallback(() => {
+    setReloadToken((n) => n + 1);
+  }, []);
+
+  return { application, resource, loading, error, reload };
 }

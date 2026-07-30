@@ -1,5 +1,6 @@
 import type { OnboardingApplicationResource } from "@/lib/onboarding/application-resource";
 import type { CustomerLookupMatch } from "@/lib/onboarding/application-resource";
+import { bffFetch } from "@/lib/global/client/bff-fetch";
 import {
   AppRoutes,
   apiOnboardingApplication,
@@ -27,7 +28,7 @@ export async function apiCreateApplication(body: {
     return { ok: false, status: 400, message: "Invalid application data." };
   }
 
-  const response = await fetch(AppRoutes.apiOnboardingApplications, {
+  const response = await bffFetch(AppRoutes.apiOnboardingApplications, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
@@ -58,7 +59,7 @@ export async function apiPatchApplication(
   | { ok: true; application: OnboardingApplicationResource }
   | { ok: false; status: number; message: string }
 > {
-  const response = await fetch(apiOnboardingApplication(idOrRef), {
+  const response = await bffFetch(apiOnboardingApplication(idOrRef), {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
@@ -97,7 +98,7 @@ export async function apiCustomerLookup(body: {
   | { ok: true; matches: CustomerLookupMatch[] }
   | { ok: false; status: number; message: string }
 > {
-  const response = await fetch(AppRoutes.apiCustomersSearch, {
+  const response = await bffFetch(AppRoutes.apiCustomersSearch, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
@@ -126,7 +127,7 @@ export async function apiFetchApplication(
   | { ok: true; application: OnboardingApplicationResource }
   | { ok: false; status: number; message: string }
 > {
-  const response = await fetch(apiOnboardingApplication(idOrRef), {
+  const response = await bffFetch(apiOnboardingApplication(idOrRef), {
     credentials: "same-origin",
   });
   const data = (await response.json().catch(() => ({}))) as {
@@ -150,7 +151,7 @@ export async function apiPauseApplication(
   | { ok: true; application: OnboardingApplicationResource }
   | { ok: false; status: number; message: string }
 > {
-  const response = await fetch(apiOnboardingApplicationPause(idOrRef), {
+  const response = await bffFetch(apiOnboardingApplicationPause(idOrRef), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
@@ -187,7 +188,7 @@ export async function apiSubmitApplication(
       blockingIssues?: SubmitBlockingIssue[];
     }
 > {
-  const response = await fetch(apiOnboardingApplicationSubmit(idOrRef), {
+  const response = await bffFetch(apiOnboardingApplicationSubmit(idOrRef), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
@@ -228,7 +229,7 @@ export async function apiDisqualifyApplication(
   | { ok: true; application: OnboardingApplicationResource }
   | { ok: false; status: number; message: string }
 > {
-  const response = await fetch(apiOnboardingApplicationDisqualify(idOrRef), {
+  const response = await bffFetch(apiOnboardingApplicationDisqualify(idOrRef), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
@@ -255,7 +256,7 @@ export async function apiFetchCurrentApplication(): Promise<
   | { ok: true; application: OnboardingApplicationResource }
   | { ok: false; status: number; message: string }
 > {
-  const response = await fetch(AppRoutes.apiOnboardingApplicationsCurrent, {
+  const response = await bffFetch(AppRoutes.apiOnboardingApplicationsCurrent, {
     credentials: "same-origin",
   });
   const data = (await response.json().catch(() => ({}))) as {
@@ -288,7 +289,7 @@ export async function apiDepositStk(body: {
     }
   | { ok: false; status: number; message: string }
 > {
-  const response = await fetch(AppRoutes.apiPaymentsStk, {
+  const response = await bffFetch(AppRoutes.apiPaymentsStk, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",
@@ -328,7 +329,7 @@ export async function apiDepositValidate(body: {
     }
   | { ok: false; status: number; message: string }
 > {
-  const response = await fetch(AppRoutes.apiPaymentsValidate, {
+  const response = await bffFetch(AppRoutes.apiPaymentsValidate, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "same-origin",

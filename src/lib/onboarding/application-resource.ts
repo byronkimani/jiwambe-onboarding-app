@@ -84,7 +84,42 @@ export type ApplicationDrivingLicence = {
   isProvisional?: boolean;
   front?: OnboardingDocument | null;
   back?: OnboardingDocument | null;
+  pdlDocument?: OnboardingDocument | null;
   pelezaReport?: OnboardingDocument | null;
+  sponsorshipRequested?: boolean;
+  preferredDrivingSchool?: string;
+};
+
+export type ApplicationStageModel = {
+  stageName?: string;
+  chairpersonName?: string;
+  chairpersonPhone?: string;
+  chairpersonCalled?: boolean;
+  callOutcome?: "confirmed" | "unreachable" | "denied";
+};
+
+export type ApplicationFleetModel = {
+  boltDriverActive: boolean;
+};
+
+export type CogcSituationKind = "have" | "fingerprints" | "peleza" | "none";
+
+export type ApplicationDeliveryModel = {
+  worksPlatform?: string;
+  platformName?: string;
+  platformContact?: string;
+  verifyConsent?: boolean;
+  consentDocument?: OnboardingDocument | null;
+  businessRegistration?: OnboardingDocument | null;
+};
+
+export type ApplicationPersonalModel = {
+  isEmployed?: string;
+  employerName?: string;
+  employerContact?: string;
+  verifyConsent?: boolean;
+  consentDocument?: OnboardingDocument | null;
+  businessRegistration?: OnboardingDocument | null;
 };
 
 export type ApplicationGoodConduct = {
@@ -92,6 +127,7 @@ export type ApplicationGoodConduct = {
   pelezaReport?: OnboardingDocument | null;
   issuedOn?: string;
   expiresOn?: string;
+  situation?: CogcSituationKind;
 };
 
 export type ReferenceEntry = {
@@ -117,10 +153,10 @@ export type OperatingModelType = "FLEET" | "STAGE" | "DELIVERY" | "PERSONAL";
 
 export type ApplicationOperatingModel = {
   type: OperatingModelType;
-  fleet?: { boltDriverActive: boolean } | null;
-  stage?: Record<string, unknown> | null;
-  delivery?: Record<string, unknown> | null;
-  personal?: Record<string, unknown> | null;
+  fleet?: ApplicationFleetModel | null;
+  stage?: ApplicationStageModel | null;
+  delivery?: ApplicationDeliveryModel | null;
+  personal?: ApplicationPersonalModel | null;
 };
 
 export type DepositPayment = {
@@ -151,6 +187,7 @@ export type ApplicationBikeAssignment = {
   insuranceSticker?: string | null;
   stickerExpiry?: string | null;
   holdAvailableUntil?: string | null;
+  handoverPhoto?: OnboardingDocument | null;
 };
 
 export type ApplicationSubmission = {

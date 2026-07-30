@@ -1,5 +1,6 @@
 "use client";
 
+import { bffFetch } from "@/lib/global/client/bff-fetch";
 import { useEffect, useState } from "react";
 import type { CatalogProduct } from "@/lib/onboarding/schemas/catalog-schemas";
 import { AppRoutes } from "@/lib/global/shared/routes";
@@ -14,7 +15,7 @@ export function useCatalogProducts() {
     async function load() {
       setLoading(true);
       setError(null);
-      const response = await fetch(AppRoutes.apiCatalogProducts, {
+      const response = await bffFetch(AppRoutes.apiCatalogProducts, {
         credentials: "same-origin",
       });
       if (!response.ok) {

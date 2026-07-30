@@ -1,5 +1,6 @@
 "use client";
 
+import { bffFetch } from "@/lib/global/client/bff-fetch";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -26,6 +27,8 @@ type DeskMode = "queue" | "history" | "drafts";
 type Props = {
   mode?: DeskMode;
   initialApplications?: OnboardingApplication[];
+  /** Mock-only CRM lifecycle simulation (MSW dev). */
+  demoLifecycleControls?: boolean;
 };
 
 function filterLive(apps: OnboardingApplication[]) {
@@ -41,6 +44,7 @@ function filterLive(apps: OnboardingApplication[]) {
 export function DeskWorklistScreen({
   mode = "queue",
   initialApplications,
+  demoLifecycleControls = false,
 }: Props) {
   const router = useRouter();
   const [apps, setApps] = useState<OnboardingApplication[]>(
@@ -49,64 +53,105 @@ export function DeskWorklistScreen({
   const [viewMode, setViewMode] = useState<"board" | "list">("board");
   const [loading, setLoading] = useState(initialApplications === undefined);
   const [historyQuery, setHistoryQuery] = useState("");
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+
+  const fetchApplications = useCallback(async () => {
+    const fetchJson = async (query: string) => {
+      const response = await bffFetch(
+        query
+          ? `${AppRoutes.apiOnboardingApplications}?${query}`
+          : AppRoutes.apiOnboardingApplications,
+        { credentials: "same-origin" },
+      );
+      if (!response.ok) return null;
+      const body = (await response.json()) as {
+        applications: OnboardingApplicationSummary[];
+      };
+      return body.applications ?? [];
+    };
+
+    if (mode === "history") {
+      return fetchJson("scope=history");
+    }
+    if (mode === "drafts") {
+      const [paused, draft] = await Promise.all([
+        fetchJson("lifecycleState=PAUSED"),
+        fetchJson("lifecycleState=DRAFT"),
+      ]);
+      if (paused === null && draft === null) {
+        return null;
+      }
+      const merged = [...(paused ?? []), ...(draft ?? [])];
+      const byRef = new Map(merged.map((s) => [s.referenceCode, s]));
+      return [...byRef.values()];
+    }
+    return fetchJson("");
+  }, [mode]);
+
+  const applyApplications = useCallback(
+    (summaries: OnboardingApplicationSummary[] | null) => {
+      if (summaries === null) {
+        setApps(mode === "queue" ? DEMO_APPLICATIONS : []);
+      } else {
+        setApps(
+          summaries.length > 0 ? summaries.map(mapSummaryToDeskCard) : [],
+        );
+      }
+      setLastUpdatedAt(new Date());
+    },
+    [mode],
+  );
+
+  const refreshApplications = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!options?.silent) {
+        setLoading(true);
+      }
+      const summaries = await fetchApplications();
+      applyApplications(summaries);
+      if (!options?.silent) {
+        setLoading(false);
+      }
+    },
+    [applyApplications, fetchApplications],
+  );
 
   useEffect(() => {
     let cancelled = false;
+
     async function load() {
       setLoading(true);
-      const fetchJson = async (query: string) => {
-        const response = await fetch(
-          query
-            ? `${AppRoutes.apiOnboardingApplications}?${query}`
-            : AppRoutes.apiOnboardingApplications,
-          { credentials: "same-origin" },
-        );
-        if (!response.ok) return null;
-        const body = (await response.json()) as {
-          applications: OnboardingApplicationSummary[];
-        };
-        return body.applications ?? [];
-      };
-
-      let summaries: OnboardingApplicationSummary[] | null = null;
-      if (mode === "history") {
-        summaries = await fetchJson("scope=history");
-      } else if (mode === "drafts") {
-        const [paused, draft] = await Promise.all([
-          fetchJson("lifecycleState=PAUSED"),
-          fetchJson("lifecycleState=DRAFT"),
-        ]);
-        if (paused === null && draft === null) {
-          summaries = null;
-        } else {
-          const merged = [...(paused ?? []), ...(draft ?? [])];
-          const byRef = new Map(merged.map((s) => [s.referenceCode, s]));
-          summaries = [...byRef.values()];
-        }
-      } else {
-        summaries = await fetchJson("");
-      }
-
+      const summaries = await fetchApplications();
       if (cancelled) return;
-
-      if (summaries === null) {
-        setApps(mode === "queue" ? DEMO_APPLICATIONS : []);
-        setLoading(false);
-        return;
-      }
-
-      setApps(
-        summaries.length > 0
-          ? summaries.map(mapSummaryToDeskCard)
-          : [],
-      );
+      applyApplications(summaries);
       setLoading(false);
     }
+
     void load();
     return () => {
       cancelled = true;
     };
-  }, [mode]);
+  }, [applyApplications, fetchApplications]);
+
+  useEffect(() => {
+    if (mode !== "queue") return;
+
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refreshApplications({ silent: true });
+      }
+    };
+
+    const interval = window.setInterval(refreshIfVisible, 60_000);
+    document.addEventListener("visibilitychange", refreshIfVisible);
+    window.addEventListener("focus", refreshIfVisible);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+      window.removeEventListener("focus", refreshIfVisible);
+    };
+  }, [mode, refreshApplications]);
 
   const drafts = useMemo(
     () => apps.filter((a) => a.state === "PAUSED" || a.state === "DRAFT"),
@@ -119,6 +164,7 @@ export function DeskWorklistScreen({
   const live = useMemo(() => filterLive(apps), [apps]);
 
   const handleDemoAdvance = useCallback((id: string, state: ApplicationState) => {
+    // TODO(prod): remove when CRM drives lifecycle transitions.
     setApps((prev) =>
       prev.map((a) =>
         a.id === id ? { ...a, state, since: "Returned just now" } : a,
@@ -256,8 +302,25 @@ export function DeskWorklistScreen({
               Every file you&apos;ve opened — pick up whichever one is waiting on
               you.
             </p>
+            {lastUpdatedAt ? (
+              <p className="mt-1 text-[12px] text-ink-faint">
+                Last updated{" "}
+                {lastUpdatedAt.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
+            ) : null}
           </div>
           <div className="flex items-center gap-2.5">
+            {mode === "queue" ? (
+              <ProtoBtn
+                ghost
+                onClick={() => void refreshApplications({ silent: true })}
+              >
+                Refresh worklist
+              </ProtoBtn>
+            ) : null}
             <div className="flex rounded-[10px] border border-line bg-card p-[3px]">
               {(
                 [
@@ -360,7 +423,12 @@ export function DeskWorklistScreen({
         {loading ? (
           <p className="text-sm text-ink-soft">Loading worklist…</p>
         ) : viewMode === "board" ? (
-          <DeskBoardView apps={live} onDemoAdvance={handleDemoAdvance} />
+          <DeskBoardView
+            apps={live}
+            onDemoAdvance={
+              demoLifecycleControls ? handleDemoAdvance : undefined
+            }
+          />
         ) : (
           <div>
             {live.map((app, i) => (
@@ -372,18 +440,20 @@ export function DeskWorklistScreen({
                 customer.
               </div>
             ) : null}
-            {live
-              .filter((a) => a.state === "OPS_REVIEW")
-              .map((a) => (
-                <button
-                  key={`${a.id}-demo`}
-                  type="button"
-                  className="jw-tap mb-2.5 block cursor-pointer rounded-lg border border-dashed border-line-strong bg-transparent px-2.5 py-1.5 text-[11.5px] font-bold text-slate"
-                  onClick={() => handleDemoAdvance(a.id, "LMS_CREATED")}
-                >
-                  ▶ Demo: ops approves {a.id} → LMS
-                </button>
-              ))}
+            {demoLifecycleControls
+              ? live
+                  .filter((a) => a.state === "OPS_REVIEW")
+                  .map((a) => (
+                    <button
+                      key={`${a.id}-demo`}
+                      type="button"
+                      className="jw-tap mb-2.5 block cursor-pointer rounded-lg border border-dashed border-line-strong bg-transparent px-2.5 py-1.5 text-[11.5px] font-bold text-slate"
+                      onClick={() => handleDemoAdvance(a.id, "LMS_CREATED")}
+                    >
+                      ▶ Demo: ops approves {a.id} → LMS
+                    </button>
+                  ))
+              : null}
           </div>
         )}
       </div>

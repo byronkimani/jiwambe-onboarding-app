@@ -104,6 +104,16 @@ describe("applications-mock-state", () => {
     }
   });
 
+  it("finds portal customer by wire phone from BFF normalization", () => {
+    const result = mockCustomerLookup({ phone: "254712334556" });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.matches.some((m) => m.displayName === "Grace Wanjiku")).toBe(
+        true,
+      );
+    }
+  });
+
   it("pauses application and clears bike", () => {
     const created = mockCreateApplication({
       readinessAttestations: {
@@ -155,21 +165,26 @@ describe("applications-mock-state", () => {
       ...SAMPLE_APPLICATION_RESOURCE,
       lifecycleState: "DRAFT" as const,
       version: 1,
+      leadId: "lead_test",
+      leadSource: "PORTAL",
       references: {
         customerConsent: true,
         entries: [
           {
             name: "Ref One",
+            nationalId: "12345678",
             phone: "+254712345678",
             relationship: "sibling",
           },
           {
             name: "Ref Two",
+            nationalId: "23456789",
             phone: "+254712345679",
             relationship: "friend",
           },
           {
             name: "Ref Three",
+            nationalId: "34567890",
             phone: "+254712345670",
             relationship: "colleague",
           },
