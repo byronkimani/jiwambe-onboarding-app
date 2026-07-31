@@ -13,6 +13,8 @@ vi.mock("@/lib/global/shared/env", () => ({
 }));
 
 describe("GET /api/onboarding/agents/profile", () => {
+  const request = new Request("http://localhost/api/onboarding/agents/profile");
+
   beforeEach(() => {
     onboardingUpstream.mockReset();
   });
@@ -21,7 +23,7 @@ describe("GET /api/onboarding/agents/profile", () => {
     onboardingUpstream.mockResolvedValue(
       NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
     );
-    const response = await GET();
+    const response = await GET(request);
     expect(response.status).toBe(401);
   });
 
@@ -44,7 +46,7 @@ describe("GET /api/onboarding/agents/profile", () => {
         { status: 200 },
       ),
     );
-    const response = await GET();
+    const response = await GET(request);
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.profile.email).toBe("jane@jiwambe.com");
@@ -52,7 +54,7 @@ describe("GET /api/onboarding/agents/profile", () => {
 
   it("falls back to seed profile when upstream fails in mock mode", async () => {
     onboardingUpstream.mockResolvedValue(new Response(null, { status: 404 }));
-    const response = await GET();
+    const response = await GET(request);
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.profile.dealership).toBe("Ruiru Hub");

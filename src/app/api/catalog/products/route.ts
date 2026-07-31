@@ -3,10 +3,12 @@ import { onboardingUpstream } from "@/lib/global/onboarding/onboarding-bff";
 import { parseUpstreamCatalogProductsResponse } from "@/lib/global/onboarding/onboarding-bff-parse";
 
 /** Contract: GET `/catalog/products` */
-export async function GET() {
-  const upstream = await onboardingUpstream("/catalog/products", {
-    method: "GET",
-  });
+export async function GET(request: Request) {
+  const upstream = await onboardingUpstream(
+    "/catalog/products",
+    { method: "GET" },
+    request,
+  );
   if (upstream instanceof NextResponse) {
     return upstream;
   }

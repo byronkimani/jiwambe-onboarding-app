@@ -33,6 +33,7 @@ This is the **only** API contract for this repository. The browser calls **Next.
 | `POST /api/onboarding/auth/password/forgot` | `POST /onboarding/auth/password/forgot` | ✅ | |
 | `POST /api/onboarding/auth/password/reset` | `POST /onboarding/auth/password/reset` | ✅ | |
 | `POST /api/onboarding/auth/password/reset/password` | `POST /onboarding/auth/password/reset/password` | ✅ | |
+| `POST /api/onboarding/auth/password/change` | `POST /onboarding/auth/password/change` | ✅ | Authenticated; wrong current → `401 invalid_credentials` |
 | *(server only)* | `POST /onboarding/auth/otp/verify` | ✅ | Auth.js `authorize()` only — **no** public BFF route |
 | *(server only)* | `POST /onboarding/auth/refresh` | ✅ | Auth.js `jwt` callback only — see [Token refresh](#token-refresh) |
 | `GET /api/onboarding/agents/profile` | `GET /onboarding/agents/profile` | ✅ | Officer chrome + profile sheet |
@@ -51,7 +52,7 @@ This is the **only** API contract for this repository. The browser calls **Next.
 | `POST /api/payments/validate` | `POST /payments/validate` | ✅ | |
 | `POST /api/onboarding/applications/:id/documents/init` | same | ✅ | Presigned upload — client PUT |
 | `POST /api/onboarding/applications/:id/documents/:documentId/complete` | same | ✅ | Marks document ready on resource |
-| `GET /api/onboarding/health` | — | — | BFF-only `{ ok: true }` |
+| `GET /api/onboarding/health` | — | — | BFF-only liveness + readiness; **503** when degraded |
 
 Route constants: [`routes.ts`](../src/lib/global/shared/routes.ts).
 
@@ -73,6 +74,7 @@ Email + password, then SMS OTP. Distinct from rider phone OTP in **`jiwambe-ride
 | `POST /onboarding/auth/password/forgot` | Request reset email |
 | `POST /onboarding/auth/password/reset` | Validate reset link token |
 | `POST /onboarding/auth/password/reset/password` | Set new password |
+| `POST /onboarding/auth/password/change` | Change password while signed in (`current_password`, `password`, `password_confirm`) |
 
 Common errors: `invalid_credentials` (401), `account_blocked` (403), `invalid_otp` (401, optional `retries_remaining`), `rate_limited` (429), `otp_expired` (410), `activation_expired` / `reset_expired` (410).
 
@@ -393,6 +395,36 @@ M-Pesa code fallback:
 ```
 
 Statuses: `verified` | `pending` | `failed`.
+
+---
+
+## Health (BFF-only)
+
+`GET /api/onboarding/health` — public, unauthenticated. Used by Playwright web-server readiness and external uptime monitors.
+
+**200 — healthy**
+
+```json
+{
+  "ok": true,
+  "status": "healthy",
+  "timestamp": "2026-07-30T17:00:00.000Z",
+  "release": "abc123",
+  "checks": {
+    "process": "ok",
+    "authConfig": "ok",
+    "upstream": "skipped"
+  }
+}
+```
+
+**503 — degraded** — `ok: false`, `status: "degraded"` when `authConfig` or `upstream` checks fail (production with real API).
+
+| Check | Meaning |
+|-------|---------|
+| `process` | Handler running |
+| `authConfig` | `NEXTAUTH_SECRET` set (skipped in dev / MSW) |
+| `upstream` | `skipped` when `MOCK_JIWAMBE_API=1`; otherwise probes `GET /catalog/products?limit=1` with 3s timeout |
 
 ---
 

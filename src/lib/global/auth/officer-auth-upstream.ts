@@ -1,5 +1,6 @@
 import { normalizeEmail } from "@/lib/global/auth/normalize-email";
 import { OFFICER_AUTH_UPSTREAM } from "@/lib/global/auth/officer-auth-paths";
+import { officerAuthUpstreamOptions } from "@/lib/global/auth/officer-auth-upstream-options";
 import { upstreamRequest } from "@/lib/global/shared/upstream-request";
 
 export type UpstreamErrorBody = {
@@ -19,14 +20,19 @@ export type OtpVerifySuccess = {
 export async function upstreamOfficerLogin(
   email: string,
   password: string,
+  request?: Request,
 ): Promise<Response> {
-  return upstreamRequest(OFFICER_AUTH_UPSTREAM.login, {
-    method: "POST",
-    body: JSON.stringify({
-      email: normalizeEmail(email),
-      password,
-    }),
-  });
+  return upstreamRequest(
+    OFFICER_AUTH_UPSTREAM.login,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        email: normalizeEmail(email),
+        password,
+      }),
+    },
+    officerAuthUpstreamOptions(request),
+  );
 }
 
 export async function upstreamOfficerOtpVerify(
@@ -42,65 +48,129 @@ export async function upstreamOfficerOtpVerify(
   });
 }
 
-export async function upstreamOfficerActivate(token: string): Promise<Response> {
-  return upstreamRequest(OFFICER_AUTH_UPSTREAM.activate, {
-    method: "POST",
-    body: JSON.stringify({ token }),
-  });
+export async function upstreamOfficerActivate(
+  token: string,
+  request?: Request,
+): Promise<Response> {
+  return upstreamRequest(
+    OFFICER_AUTH_UPSTREAM.activate,
+    {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    },
+    officerAuthUpstreamOptions(request),
+  );
 }
 
 export async function upstreamOfficerActivatePassword(
   activationSessionId: string,
   password: string,
+  request?: Request,
 ): Promise<Response> {
-  return upstreamRequest(OFFICER_AUTH_UPSTREAM.activatePassword, {
-    method: "POST",
-    body: JSON.stringify({
-      activation_session_id: activationSessionId,
-      password,
-    }),
-  });
+  return upstreamRequest(
+    OFFICER_AUTH_UPSTREAM.activatePassword,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        activation_session_id: activationSessionId,
+        password,
+      }),
+    },
+    officerAuthUpstreamOptions(request),
+  );
 }
 
-export async function upstreamOfficerPasswordForgot(email: string): Promise<Response> {
-  return upstreamRequest(OFFICER_AUTH_UPSTREAM.passwordForgot, {
-    method: "POST",
-    body: JSON.stringify({ email: normalizeEmail(email) }),
-  });
+export async function upstreamOfficerPasswordForgot(
+  email: string,
+  request?: Request,
+): Promise<Response> {
+  return upstreamRequest(
+    OFFICER_AUTH_UPSTREAM.passwordForgot,
+    {
+      method: "POST",
+      body: JSON.stringify({ email: normalizeEmail(email) }),
+    },
+    officerAuthUpstreamOptions(request),
+  );
 }
 
-export async function upstreamOfficerPasswordReset(token: string): Promise<Response> {
-  return upstreamRequest(OFFICER_AUTH_UPSTREAM.passwordReset, {
-    method: "POST",
-    body: JSON.stringify({ token }),
-  });
+export async function upstreamOfficerPasswordReset(
+  token: string,
+  request?: Request,
+): Promise<Response> {
+  return upstreamRequest(
+    OFFICER_AUTH_UPSTREAM.passwordReset,
+    {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    },
+    officerAuthUpstreamOptions(request),
+  );
 }
 
 export async function upstreamOfficerPasswordResetPassword(
   resetSessionId: string,
   password: string,
+  request?: Request,
 ): Promise<Response> {
-  return upstreamRequest(OFFICER_AUTH_UPSTREAM.passwordResetPassword, {
-    method: "POST",
-    body: JSON.stringify({
-      reset_session_id: resetSessionId,
-      password,
-    }),
-  });
+  return upstreamRequest(
+    OFFICER_AUTH_UPSTREAM.passwordResetPassword,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        reset_session_id: resetSessionId,
+        password,
+      }),
+    },
+    officerAuthUpstreamOptions(request),
+  );
 }
 
-export async function upstreamOfficerOtpResend(otpSessionId: string): Promise<Response> {
-  return upstreamRequest(OFFICER_AUTH_UPSTREAM.otpResend, {
-    method: "POST",
-    body: JSON.stringify({ otp_session_id: otpSessionId }),
-  });
+export async function upstreamOfficerPasswordChange(
+  accessToken: string,
+  currentPassword: string,
+  password: string,
+  request?: Request,
+): Promise<Response> {
+  return upstreamRequest(
+    OFFICER_AUTH_UPSTREAM.passwordChange,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        current_password: currentPassword,
+        password,
+      }),
+    },
+    officerAuthUpstreamOptions(request, { accessToken }),
+  );
 }
 
-export async function upstreamOfficerLogout(refreshToken: string): Promise<Response> {
-  return upstreamRequest(OFFICER_AUTH_UPSTREAM.logout, {
-    method: "POST",
-    body: JSON.stringify({ refresh_token: refreshToken }),
-  });
+export async function upstreamOfficerOtpResend(
+  otpSessionId: string,
+  request?: Request,
+): Promise<Response> {
+  return upstreamRequest(
+    OFFICER_AUTH_UPSTREAM.otpResend,
+    {
+      method: "POST",
+      body: JSON.stringify({ otp_session_id: otpSessionId }),
+    },
+    officerAuthUpstreamOptions(request),
+  );
+}
+
+export async function upstreamOfficerLogout(
+  refreshToken: string,
+  request?: Request,
+): Promise<Response> {
+  return upstreamRequest(
+    OFFICER_AUTH_UPSTREAM.logout,
+    {
+      method: "POST",
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    },
+    officerAuthUpstreamOptions(request),
+  );
 }
 
 export async function upstreamOfficerRefresh(

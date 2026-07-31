@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireOnboardingAccessToken } from "@/lib/global/auth/require-onboarding-session";
+import { ensureRequestId } from "@/lib/global/observability/request-id";
 import { upstreamRequest } from "@/lib/global/shared/upstream-request";
 
 export type OnboardingUpstreamSession =
@@ -20,10 +21,16 @@ export async function requireOnboardingUpstream(): Promise<OnboardingUpstreamSes
 export async function onboardingUpstream(
   path: string,
   init?: RequestInit,
+  request?: Request,
 ): Promise<Response | NextResponse> {
   const session = await requireOnboardingUpstream();
   if (!session.ok) {
     return session.response;
   }
-  return upstreamRequest(path, init, { accessToken: session.accessToken });
+
+  const requestId = request ? ensureRequestId(request.headers) : undefined;
+  return upstreamRequest(path, init, {
+    accessToken: session.accessToken,
+    requestId,
+  });
 }

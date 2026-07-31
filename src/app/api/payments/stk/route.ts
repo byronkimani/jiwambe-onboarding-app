@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   const upstream = await onboardingUpstream("/payments/stk", {
     method: "POST",
     body: JSON.stringify(parsedBody.data),
-  });
+  }, request);
   if (upstream instanceof NextResponse) {
     return upstream;
   }

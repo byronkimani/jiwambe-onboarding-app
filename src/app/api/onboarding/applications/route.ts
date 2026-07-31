@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     ? `/onboarding/applications?${query}`
     : "/onboarding/applications";
 
-  const upstream = await onboardingUpstream(path, { method: "GET" });
+  const upstream = await onboardingUpstream(path, { method: "GET" }, request);
   if (upstream instanceof NextResponse) {
     return upstream;
   }
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
   const upstream = await onboardingUpstream("/onboarding/applications", {
     method: "POST",
     body: JSON.stringify(parsedBody.data),
-  });
+  }, request);
   if (upstream instanceof NextResponse) {
     return upstream;
   }

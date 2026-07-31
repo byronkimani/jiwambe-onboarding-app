@@ -7,6 +7,7 @@ export const OFFICER_AUTH_UPSTREAM = {
   passwordForgot: "/onboarding/auth/password/forgot",
   passwordReset: "/onboarding/auth/password/reset",
   passwordResetPassword: "/onboarding/auth/password/reset/password",
+  passwordChange: "/onboarding/auth/password/change",
   otpResend: "/onboarding/auth/otp/resend",
   logout: "/onboarding/auth/logout",
   refresh: "/onboarding/auth/refresh",

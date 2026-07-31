@@ -59,7 +59,7 @@ export async function POST(request: Request) {
   const upstream = await onboardingUpstream("/catalog/quotes", {
     method: "POST",
     body: JSON.stringify(parsed.request),
-  });
+  }, request);
   if (upstream instanceof NextResponse) {
     return upstream;
   }

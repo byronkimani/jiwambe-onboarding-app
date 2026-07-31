@@ -5,10 +5,12 @@ import { parseOfficerProfileResponse } from "@/lib/onboarding/schemas/officer-pr
 import { isMockJiwambeApiEnabled } from "@/lib/global/shared/env";
 
 /** Contract: GET `/onboarding/agents/profile` */
-export async function GET() {
-  const upstream = await onboardingUpstream("/onboarding/agents/profile", {
-    method: "GET",
-  });
+export async function GET(request: Request) {
+  const upstream = await onboardingUpstream(
+    "/onboarding/agents/profile",
+    { method: "GET" },
+    request,
+  );
   if (upstream instanceof NextResponse) {
     return upstream;
   }

@@ -39,6 +39,7 @@ export const AppRoutes = {
   apiOnboardingAuthPasswordReset: "/api/onboarding/auth/password/reset",
   apiOnboardingAuthPasswordResetPassword:
     "/api/onboarding/auth/password/reset/password",
+  apiOnboardingAuthPasswordChange: "/api/onboarding/auth/password/change",
   apiOnboardingLogout: "/api/onboarding/logout",
   apiOnboardingAgentsProfile: "/api/onboarding/agents/profile",
   apiOnboardingMockDocumentUpload: "/api/onboarding/mock/documents",

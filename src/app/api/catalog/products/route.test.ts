@@ -10,6 +10,8 @@ vi.mock("@/lib/global/onboarding/onboarding-bff", () => ({
 }));
 
 describe("GET /api/catalog/products", () => {
+  const request = new Request("http://localhost/api/catalog/products");
+
   beforeEach(() => {
     onboardingUpstream.mockReset();
   });
@@ -20,20 +22,22 @@ describe("GET /api/catalog/products", () => {
       new Response(JSON.stringify({ products }), { status: 200 }),
     );
 
-    const response = await GET();
+    const response = await GET(request);
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.products[0].label).toBe("Spiro TVS");
-    expect(onboardingUpstream).toHaveBeenCalledWith("/catalog/products", {
-      method: "GET",
-    });
+    expect(onboardingUpstream).toHaveBeenCalledWith(
+      "/catalog/products",
+      { method: "GET" },
+      request,
+    );
   });
 
   it("returns 401 when upstream unauthorized", async () => {
     onboardingUpstream.mockResolvedValue(
       NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
     );
-    const response = await GET();
+    const response = await GET(request);
     expect(response.status).toBe(401);
   });
 });

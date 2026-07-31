@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { onboardingUpstream } from "@/lib/global/onboarding/onboarding-bff";
 import { parseUpstreamApplicationResponse } from "@/lib/global/onboarding/onboarding-bff-parse";
 
-export async function GET() {
+export async function GET(request: Request) {
   const upstream = await onboardingUpstream("/onboarding/applications/current", {
     method: "GET",
-  });
+  }, request);
   if (upstream instanceof NextResponse) {
     return upstream;
   }

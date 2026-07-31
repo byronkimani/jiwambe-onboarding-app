@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import {
   DEMO_ACTIVATION_TOKEN,
   DEMO_AGENT_EMAIL,
-  DEMO_OTP_CODE,
+  DEMO_AGENT_PASSWORD,
   DEMO_PENDING_AGENT_EMAIL,
   DEMO_RESET_TOKEN,
 } from "../src/lib/global/auth/demo-credentials";
@@ -11,7 +11,11 @@ import {
   captureStage,
   deskApplicationAgreement,
 } from "../src/lib/global/shared/routes";
-import { signInAsOnboardingAgent } from "./helpers/sign-in";
+import {
+  completeOfficerOtpSignIn,
+  signInAsOnboardingAgent,
+  signInWithCredentials,
+} from "./helpers/sign-in";
 import {
   gotoActivatePasswordForm,
   gotoResetPasswordForm,
@@ -83,6 +87,28 @@ test.describe("shell routes", () => {
     await expect(page).toHaveURL(/\/(\?|$)/);
   });
 
+  test("agent changes password from profile and signs in again", async ({
+    page,
+  }) => {
+    const newPassword = "ProfilePass99";
+    await signInAsOnboardingAgent(page);
+    await page.goto(AppRoutes.deskProfile);
+    await page.getByLabel("Current password").fill(DEMO_AGENT_PASSWORD);
+    await page.getByLabel("New password", { exact: true }).fill(newPassword);
+    await page.getByLabel("Confirm new password").fill(newPassword);
+    await page.getByRole("button", { name: "Update password" }).click();
+    await expect(page).toHaveURL(/\?passwordChanged=1/, { timeout: 20_000 });
+    await expect(
+      page.getByText(/Password updated — sign in with your email and new password/i),
+    ).toBeVisible();
+
+    await signInWithCredentials(page, DEMO_AGENT_EMAIL, newPassword, {
+      navigateHome: false,
+    });
+    await completeOfficerOtpSignIn(page);
+    await expect(page).toHaveURL(AppRoutes.desk, { timeout: 30_000 });
+  });
+
   test("CRM activation sets password then agent signs in", async ({ page }) => {
     const newPassword = "SecurePass99";
     await gotoActivatePasswordForm(page, DEMO_ACTIVATION_TOKEN);
@@ -90,12 +116,10 @@ test.describe("shell routes", () => {
     await page.getByLabel("Confirm password").fill(newPassword);
     await page.getByRole("button", { name: "Save password" }).click();
     await expect(page).toHaveURL(/\?passwordSet=1/);
-    await page.getByPlaceholder("you@example.com").fill(DEMO_PENDING_AGENT_EMAIL);
-    await page.getByPlaceholder("••••••••").fill(newPassword);
-    await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page.getByRole("heading", { name: "One more step" })).toBeVisible();
-    await page.getByLabel("Verification code").fill(DEMO_OTP_CODE);
-    await page.getByRole("button", { name: "Verify & sign in" }).click();
+    await signInWithCredentials(page, DEMO_PENDING_AGENT_EMAIL, newPassword, {
+      navigateHome: false,
+    });
+    await completeOfficerOtpSignIn(page);
     await expect(page).toHaveURL(AppRoutes.desk, { timeout: 30_000 });
   });
 
@@ -139,7 +163,13 @@ test.describe("shell routes", () => {
   test("health endpoint responds", async ({ request }) => {
     const response = await request.get(AppRoutes.apiOnboardingHealth);
     expect(response.ok()).toBeTruthy();
-    await expect(response.json()).resolves.toEqual({ ok: true });
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      status: "healthy",
+      checks: {
+        process: "ok",
+      },
+    });
   });
 
   test("forgot password then reset link sets password and agent signs in", async ({
@@ -157,12 +187,10 @@ test.describe("shell routes", () => {
     await page.getByRole("button", { name: "Save password" }).click();
     await expect(page).toHaveURL(/\?passwordSet=1/);
 
-    await page.getByPlaceholder("you@example.com").fill(DEMO_AGENT_EMAIL);
-    await page.getByPlaceholder("••••••••").fill(newPassword);
-    await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page.getByRole("heading", { name: "One more step" })).toBeVisible();
-    await page.getByLabel("Verification code").fill(DEMO_OTP_CODE);
-    await page.getByRole("button", { name: "Verify & sign in" }).click();
+    await signInWithCredentials(page, DEMO_AGENT_EMAIL, newPassword, {
+      navigateHome: false,
+    });
+    await completeOfficerOtpSignIn(page);
     await expect(page).toHaveURL(AppRoutes.desk, { timeout: 30_000 });
   });
 });

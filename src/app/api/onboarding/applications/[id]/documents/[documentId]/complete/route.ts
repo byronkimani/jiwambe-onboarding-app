@@ -4,12 +4,13 @@ import { parseUpstreamApplicationResponse } from "@/lib/global/onboarding/onboar
 
 type Params = { params: Promise<{ id: string; documentId: string }> };
 
-export async function POST(_request: Request, { params }: Params) {
+export async function POST(request: Request, { params }: Params) {
   const { id, documentId } = await params;
 
   const upstream = await onboardingUpstream(
     `/onboarding/applications/${encodeURIComponent(id)}/documents/${encodeURIComponent(documentId)}/complete`,
     { method: "POST" },
+    request,
   );
   if (upstream instanceof NextResponse) {
     return upstream;

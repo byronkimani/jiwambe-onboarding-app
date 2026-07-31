@@ -27,6 +27,7 @@ export async function POST(request: Request) {
   const response = await upstreamOfficerLogin(
     parsed.data.email,
     parsed.data.password,
+    request,
   );
 
   const data = await parseUpstreamJson<{

@@ -27,6 +27,7 @@ export async function POST(request: Request, { params }: Params) {
   const currentUpstream = await onboardingUpstream(
     `/onboarding/applications/${encodeURIComponent(id)}`,
     { method: "GET" },
+    request,
   );
   if (currentUpstream instanceof NextResponse) {
     return currentUpstream;
@@ -51,6 +52,7 @@ export async function POST(request: Request, { params }: Params) {
       method: "POST",
       body: JSON.stringify(parsedBody.data),
     },
+    request,
   );
   if (upstream instanceof NextResponse) {
     return upstream;

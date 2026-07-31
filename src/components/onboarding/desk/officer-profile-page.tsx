@@ -6,6 +6,7 @@ import { ProtoBtn } from "@/components/onboarding/atoms/proto-field";
 import { AppRoutes } from "@/lib/global/shared/routes";
 import { useOnboardingChrome } from "@/components/onboarding/onboarding-chrome-context";
 import { performOfficerSignOut } from "@/components/auth/sign-out-button";
+import { ChangePasswordForm } from "@/components/onboarding/desk/change-password-form";
 
 function ProfileRow({ label, value }: { label: string; value: string }) {
   return (
@@ -59,6 +60,8 @@ export function OfficerProfilePage() {
             <ProfileRow label="This device" value={officer.deviceLabel} />
             <ProfileRow label="Last sign-in" value={officer.lastSignIn} />
           </div>
+
+          <ChangePasswordForm />
 
           <div className="flex gap-2.5">
             <ProtoBtn ghost className="flex-1" onClick={() => router.push(AppRoutes.desk)}>

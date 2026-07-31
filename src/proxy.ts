@@ -1,6 +1,10 @@
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import {
+  ensureRequestId,
+  REQUEST_ID_HEADER,
+} from "@/lib/global/observability/request-id";
+import {
   AppRoutes,
   isCapturePath,
   isDeskPath,
@@ -10,6 +14,18 @@ import { sanitizeCallbackUrl } from "@/lib/global/shared/sanitize-callback-url";
 
 function isProtectedAppPath(pathname: string): boolean {
   return isDeskPath(pathname) || isCapturePath(pathname);
+}
+
+function forwardWithRequestId(request: Request): NextResponse {
+  const pathname = new URL(request.url).pathname;
+  if (!pathname.startsWith("/api/")) {
+    return NextResponse.next();
+  }
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(REQUEST_ID_HEADER, ensureRequestId(requestHeaders));
+  return NextResponse.next({
+    request: { headers: requestHeaders },
+  });
 }
 
 export default auth((request) => {
@@ -26,7 +42,7 @@ export default auth((request) => {
       redirectUrl.searchParams.set("sessionExpired", "1");
       return NextResponse.redirect(redirectUrl);
     }
-    return NextResponse.next();
+    return forwardWithRequestId(request);
   }
 
   if (hasValidSession && pathname === AppRoutes.home) {
@@ -46,7 +62,7 @@ export default auth((request) => {
       pathname.startsWith("/api/payments"))
   ) {
     if (isPublicApiOnboardingPath(pathname)) {
-      return NextResponse.next();
+      return forwardWithRequestId(request);
     }
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -62,7 +78,7 @@ export default auth((request) => {
     return NextResponse.redirect(redirectUrl);
   }
 
-  return NextResponse.next();
+  return forwardWithRequestId(request);
 });
 
 export const config = {

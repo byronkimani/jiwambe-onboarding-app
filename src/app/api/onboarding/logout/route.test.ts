@@ -14,6 +14,10 @@ vi.mock("@/lib/global/auth/officer-auth-upstream", () => ({
 }));
 
 describe("POST /api/onboarding/logout", () => {
+  const request = new Request("http://localhost/api/onboarding/logout", {
+    method: "POST",
+  });
+
   beforeEach(() => {
     requireRefresh.mockReset();
     upstreamLogout.mockReset();
@@ -21,7 +25,7 @@ describe("POST /api/onboarding/logout", () => {
 
   it("returns 401 without session", async () => {
     requireRefresh.mockResolvedValue({ ok: false });
-    const response = await POST();
+    const response = await POST(request);
     expect(response.status).toBe(401);
   });
 
@@ -31,8 +35,8 @@ describe("POST /api/onboarding/logout", () => {
       new Response(JSON.stringify({ ok: true }), { status: 200 }),
     );
 
-    const response = await POST();
+    const response = await POST(request);
     expect(response.status).toBe(200);
-    expect(upstreamLogout).toHaveBeenCalledWith("rt_1");
+    expect(upstreamLogout).toHaveBeenCalledWith("rt_1", request);
   });
 });

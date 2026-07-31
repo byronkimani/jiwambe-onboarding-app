@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   const query = url.searchParams.toString();
   const path = query ? `/inventory?${query}` : "/inventory";
 
-  const upstream = await onboardingUpstream(path, { method: "GET" });
+  const upstream = await onboardingUpstream(path, { method: "GET" }, request);
   if (upstream instanceof NextResponse) {
     return upstream;
   }

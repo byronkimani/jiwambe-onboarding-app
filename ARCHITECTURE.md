@@ -48,6 +48,59 @@ PhotoSlot → POST BFF documents/init → upstream presign
 - **Deferred pipeline** (documented in [`docs/implementation-plan.md`](docs/implementation-plan.md#security-pipeline-deferred--document-before-implement)): BFF edge rate limits (Upstash Redis on public auth routes), CSP env-split for production, CSP nonces to remove `'unsafe-inline'`
 - Client session recovery: [`bffFetch`](src/lib/global/client/bff-fetch.ts) on protected BFF API calls — 401 triggers sign-out and redirect to `/?sessionExpired=1`
 
+## Observability
+
+### Sentry (errors and traces)
+
+- **Package:** `@sentry/nextjs` — shared options in [`src/lib/global/observability/sentry-options.ts`](src/lib/global/observability/sentry-options.ts)
+- **Runtimes:** server ([`sentry.server.config.ts`](sentry.server.config.ts)), edge ([`sentry.edge.config.ts`](sentry.edge.config.ts)), client ([`instrumentation-client.ts`](instrumentation-client.ts))
+- **Tunnel:** `/monitoring` via `withSentryConfig` in [`next.config.ts`](next.config.ts) — CSP `connect-src 'self'` is sufficient (no ingest host allowlist)
+- **Enable rules:** off when `E2E=1` or DSN unset; on in production when DSN set; local dev requires `SENTRY_ENABLED=1`
+- **User context:** `Sentry.setUser` after profile fetch in chrome context; cleared on sign-out
+- **Privacy:** scrub keys matching `/password|token|authorization|otp|refresh/i`; `sendDefaultPii: false`; session replay on error only with text/media masking
+- **BFF 5xx:** `bffFetch` captures server errors with `bff_path` tag (not 401/400)
+
+### Structured logging (BFF)
+
+- **Module:** [`structured-logger.ts`](src/lib/global/observability/structured-logger.ts) — JSON lines to stdout
+- **Events:** `upstream_call` (all [`upstreamRequest`](src/lib/global/shared/upstream-request.ts) calls), `bff_request` (health and other non-upstream routes)
+- **Correlation:** `X-Request-Id` set in [`proxy.ts`](src/proxy.ts) for `/api/*`; forwarded to upstream on all BFF and auth routes
+- **Log levels:** auth-path 400/401/403/429 → `info`; other 4xx → `warn`; 5xx/network → `error` ([`upstream-log-level.ts`](src/lib/global/observability/upstream-log-level.ts))
+- **Enable rules:** off when `E2E=1`; on in production; local dev requires `STRUCTURED_LOGGING_ENABLED=1`
+- **Future:** ship stdout to Datadog Logs or Grafana Loki (Phase 12)
+
+**Request vs session debugging (today):**
+
+- **`requestId`** — one HTTP request (one browser `fetch`). Links BFF `upstream_call` lines and upstream `X-Request-Id` for that call.
+- **Session timeline** — many requests while Jane is signed in. **Not shipped in logs yet**; use Sentry user filter for errors only.
+
+### Session logging (future)
+
+Planned as Phase 12 follow-on ([`implementation-plan.md`](docs/implementation-plan.md) — Session logging):
+
+1. **`officerId` on structured logs** — query all server activity for an officer in a time window (requires log drain).
+2. **`X-Session-Trace-Id`** from client `bffFetch` — one id per browser session until sign-out; threads desk/capture API calls together.
+3. **Safe `upstreamError` codes** on 4xx — business reason without response bodies.
+4. **Optional audit events** — capture stage / submit milestones for product-level timelines.
+
+No Upstash or shared store — header + JWT propagation only (same model as `requestId`).
+
+### Health / uptime
+
+- **Endpoint:** `GET /api/onboarding/health` — public, unauthenticated
+- **200:** `ok: true`, `status: "healthy"`, `checks` object
+- **503:** `ok: false`, `status: "degraded"` when auth config or upstream probe fails
+- **External monitor:** configure Datadog Synthetic, Grafana Cloud check, or UptimeRobot to GET health every 1–5 min; alert on non-200 or `ok: false`
+
+### RCA runbook
+
+1. Open Sentry → filter by **environment** (`SENTRY_ENVIRONMENT` / `VERCEL_ENV`) and **release** (`VERCEL_GIT_COMMIT_SHA` or `SENTRY_RELEASE`).
+2. Search by officer **email** (user context set after login) or **dealershipId** tag.
+3. For client errors, open the trace URL; for BFF failures, search messages tagged `bff_path:/api/...`.
+4. For request trails, search structured logs by `requestId` or `upstreamPath` (once log drain is wired in Phase 12).
+5. For officer session timelines (future), search logs by `officerId` and `sessionTraceId` — see Session logging (future) above.
+6. Local smoke: set `SENTRY_ENABLED=1` + DSN in `.env.local`, trigger a dev error, confirm event with user context after login.
+
 ## Related products
 
 | Product | Role |

@@ -21,6 +21,61 @@
 - Remove demo worklist advance buttons; CRM-driven state
 - Staging sign-off, security review, wider tablet E2E viewport
 
+## Phase 12 — Metrics and log aggregation (Datadog or Grafana)
+
+Structured JSON logs ship to stdout from the BFF ([`structured-logger.ts`](../src/lib/global/observability/structured-logger.ts)). Pick **one** vendor at deploy time; do not run dual APM stacks.
+
+### Shared foundation (shipped)
+
+- JSON logs: `service`, `env`, `release`, `requestId`, `event` (`upstream_call`, `bff_request`)
+- Sentry for errors/traces ([`ARCHITECTURE.md`](../ARCHITECTURE.md))
+- Public health URL for synthetics: `GET /api/onboarding/health`
+
+### Path A — Datadog
+
+| Layer | Setup |
+|-------|--------|
+| Logs | Vercel → Datadog log drain; JSON parsed automatically |
+| APM | OpenTelemetry → Datadog exporter, or `@datadog/dd-trace` (evaluate bundle impact) |
+| Metrics | Log-derived metrics or OTEL (BFF 5xx rate, upstream latency from `upstream_call`) |
+| Synthetics | Monitor `/api/onboarding/health` every 1–5 min; alert on non-200 or `ok: false` |
+| Dashboards | BFF error rate by route, upstream failures, auth 401/429 |
+
+### Path B — Grafana Cloud
+
+| Layer | Setup |
+|-------|--------|
+| Logs | Vercel drain → **Loki**; query `{service="jiwambe-onboarding-app"}` |
+| Metrics | **Prometheus** remote-write from OTEL |
+| Traces | **Tempo** optional; Sentry remains primary for errors |
+| Synthetics | Grafana Cloud check on health URL |
+| Dashboards | Loki + Prometheus panels mirroring Datadog list |
+
+### Optional later code
+
+- OpenTelemetry SDK wrapper around `upstreamRequest`
+- `LOG_FORMAT=datadog` for trace-log correlation (`dd.trace_id`)
+
+Keep `release` aligned with Sentry (`VERCEL_GIT_COMMIT_SHA` or `SENTRY_RELEASE`).
+
+### Session logging (future — officer timeline debugging)
+
+**Shipped today:** per-request `requestId` on each HTTP call; Sentry `setUser` for errors after login. That answers *“what failed on this one API call?”* — not *“what did officer Jane do across her sitting?”*
+
+Session logging adds **officer-scoped, multi-request timelines** in structured logs (and optionally Sentry tags). No Redis/Upstash — ids pass via headers and JWT like `requestId`.
+
+| Tier | Goal | Implementation sketch |
+|------|------|---------------------|
+| **1 — Officer on logs** | Filter logs by user in a time window | Add `officerId` (and optional `dealershipId`) to every structured log line on protected BFF routes; resolve from Auth.js session in a shared helper |
+| **2 — Browser session trace** | One thread id across many `bffFetch` calls until sign-out | Client generates `sessionTraceId` (UUID) after login; `bffFetch` sends `X-Session-Trace-Id`; [`proxy.ts`](../src/proxy.ts) forwards; include in `upstream_call` / `bff_request` JSON |
+| **3 — Safe error codes** | Know *why* a single call failed without response bodies | On upstream 4xx, log `upstreamError` code only (e.g. `validation_failed`, `invalid_credentials`) — never passwords or PII |
+| **4 — Business audit events** | Product journey (desk → capture → submit) | Explicit events: `application_opened`, `capture_stage_completed`, `submit_attempted` with `applicationRef` / stage key |
+| **5 — OTEL (optional)** | Cross-service traces | OpenTelemetry spans; export via Phase 12 vendor; Sentry remains primary for user-facing errors |
+
+**Debugging workflow (target):** Sentry → filter by officer email → note time range → logs query `{officerId, sessionTraceId}` → ordered timeline of `upstream_call` + audit events. Request ID still used to deep-link one call to upstream platform logs.
+
+**Out of scope:** storing session timelines in Upstash; full response-body logging; replacing Sentry with Tempo for errors.
+
 ## Security pipeline (deferred — document before implement)
 
 Track in [`implementation-status.md`](implementation-status.md). Implement in order when staging hardening starts.

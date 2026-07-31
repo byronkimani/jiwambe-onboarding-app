@@ -7,9 +7,22 @@ import {
 } from "@/lib/global/client/bff-fetch";
 
 const signOutMock = vi.fn();
+const captureMessageMock = vi.fn();
+const withScopeMock = vi.fn((callback: (scope: { setTag: typeof vi.fn; setLevel: typeof vi.fn }) => void) => {
+  callback({
+    setTag: vi.fn(),
+    setLevel: vi.fn(),
+  });
+});
 
 vi.mock("next-auth/react", () => ({
   signOut: (...args: unknown[]) => signOutMock(...args),
+}));
+
+vi.mock("@sentry/nextjs", () => ({
+  captureMessage: (...args: unknown[]) => captureMessageMock(...args),
+  withScope: (callback: (scope: { setTag: typeof vi.fn; setLevel: typeof vi.fn }) => void) =>
+    withScopeMock(callback),
 }));
 
 describe("bffFetch", () => {
@@ -19,6 +32,8 @@ describe("bffFetch", () => {
   beforeEach(() => {
     fetchMock.mockReset();
     signOutMock.mockReset();
+    captureMessageMock.mockReset();
+    withScopeMock.mockClear();
     assignMock.mockReset();
     resetBffSessionRecoveryForTests();
     vi.stubGlobal("fetch", fetchMock);
@@ -87,5 +102,17 @@ describe("bffFetch", () => {
 
     expect(response.status).toBe(401);
     expect(signOutMock).not.toHaveBeenCalled();
+  });
+
+  it("reports 5xx BFF responses to Sentry", async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 503 }));
+
+    const response = await bffFetch(AppRoutes.apiCatalogProducts);
+
+    expect(response.status).toBe(503);
+    expect(withScopeMock).toHaveBeenCalled();
+    expect(captureMessageMock).toHaveBeenCalledWith(
+      `BFF 503: ${AppRoutes.apiCatalogProducts}`,
+    );
   });
 });

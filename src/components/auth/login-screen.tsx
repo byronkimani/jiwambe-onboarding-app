@@ -23,9 +23,11 @@ function formatOtpError(
 
 export function LoginScreen({
   passwordSet,
+  passwordChanged,
   sessionExpired,
 }: {
   passwordSet?: boolean;
+  passwordChanged?: boolean;
   sessionExpired?: boolean;
 }) {
   const [step, setStep] = useState<Step>("login");
@@ -81,6 +83,11 @@ export function LoginScreen({
         <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[13px] leading-relaxed text-amber-950">
           Your session expired. Sign in again with your email, password, and SMS
           code.
+        </p>
+      ) : null}
+      {passwordChanged ? (
+        <p className="mb-4 rounded-xl bg-accent-soft px-3 py-2.5 text-[13px] leading-relaxed text-accent-deep">
+          Password updated — sign in with your email and new password.
         </p>
       ) : null}
       {passwordSet ? (
