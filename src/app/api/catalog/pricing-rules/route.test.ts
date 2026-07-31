@@ -9,6 +9,8 @@ vi.mock("@/lib/global/onboarding/onboarding-bff", () => ({
 }));
 
 describe("GET /api/catalog/pricing-rules", () => {
+  const request = new Request("http://localhost/api/catalog/pricing-rules");
+
   beforeEach(() => {
     upstreamMock.mockReset();
     upstreamMock.mockResolvedValue(new Response(null, { status: 404 }));
@@ -18,12 +20,12 @@ describe("GET /api/catalog/pricing-rules", () => {
     upstreamMock.mockResolvedValue(
       NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
     );
-    const response = await GET();
+    const response = await GET(request);
     expect(response.status).toBe(401);
   });
 
   it("returns local rules when upstream is unavailable", async () => {
-    const response = await GET();
+    const response = await GET(request);
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.operatingModels.length).toBeGreaterThan(0);
@@ -42,7 +44,7 @@ describe("GET /api/catalog/pricing-rules", () => {
         { status: 200 },
       ),
     );
-    const response = await GET();
+    const response = await GET(request);
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.operatingModels[0].minDepositKes).toBe(6000);

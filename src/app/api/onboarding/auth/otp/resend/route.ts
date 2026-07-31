@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
 
-  const response = await upstreamOfficerOtpResend(parsed.data.otp_session_id);
+  const response = await upstreamOfficerOtpResend(parsed.data.otp_session_id, request);
   const data = await parseUpstreamJson<{
     resend_available_in_seconds?: number;
     message?: string;

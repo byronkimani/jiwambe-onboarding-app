@@ -10,6 +10,8 @@ vi.mock("@/lib/global/onboarding/onboarding-bff", () => ({
 }));
 
 describe("applications current route", () => {
+  const request = new Request("http://localhost/api/onboarding/applications/current");
+
   beforeEach(() => {
     onboardingUpstream.mockReset();
   });
@@ -21,7 +23,7 @@ describe("applications current route", () => {
       }),
     );
 
-    const response = await GET();
+    const response = await GET(request);
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.application.referenceCode).toBe("A-1042");
@@ -32,7 +34,7 @@ describe("applications current route", () => {
       new Response(JSON.stringify({ error: "not_found" }), { status: 404 }),
     );
 
-    const response = await GET();
+    const response = await GET(request);
     expect(response.status).toBe(404);
   });
 
@@ -41,7 +43,7 @@ describe("applications current route", () => {
       NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
     );
 
-    const response = await GET();
+    const response = await GET(request);
     expect(response.status).toBe(401);
   });
 });

@@ -7,7 +7,7 @@ const webServerReadyUrl = `${baseURL}/api/onboarding/health`;
 
 export default defineConfig({
   testDir: "./e2e",
-  fullyParallel: false,
+  fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1,
   workers: 1,

@@ -1,5 +1,6 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import { bffFetch } from "@/lib/global/client/bff-fetch";
 import {
   createContext,
@@ -84,9 +85,18 @@ export function OnboardingChromeProvider({
           credentials: "same-origin",
         });
         if (!response.ok || cancelled) return;
-        const body = (await response.json()) as { profile?: OfficerProfile };
+        const body = (await response.json()) as {
+          profile?: OfficerProfile & { dealershipId?: string };
+        };
         if (body.profile) {
           setOfficer(mapApiProfileToOfficer(body.profile));
+          Sentry.setUser({
+            id: body.profile.id,
+            email: body.profile.email,
+          });
+          if (body.profile.dealershipId) {
+            Sentry.setTag("dealershipId", body.profile.dealershipId);
+          }
         }
       } catch {
         // Keep seed/session merge when profile API is unavailable.

@@ -26,6 +26,7 @@ export async function POST(request: Request, { params }: Params) {
       method: "POST",
       body: JSON.stringify(parsedBody.data),
     },
+    request,
   );
   if (upstream instanceof NextResponse) {
     return upstream;

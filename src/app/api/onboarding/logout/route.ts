@@ -5,13 +5,13 @@ import {
   upstreamOfficerLogout,
 } from "@/lib/global/auth/officer-auth-upstream";
 
-export async function POST() {
+export async function POST(request: Request) {
   const session = await requireOnboardingRefreshToken();
   if (!session.ok) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const response = await upstreamOfficerLogout(session.refreshToken);
+  const response = await upstreamOfficerLogout(session.refreshToken, request);
   const data = await parseUpstreamJson<Record<string, unknown>>(response);
 
   if (!response.ok) {

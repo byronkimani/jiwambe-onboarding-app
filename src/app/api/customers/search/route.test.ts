@@ -53,6 +53,7 @@ describe("POST /api/customers/search", () => {
     expect(onboardingUpstream).toHaveBeenCalledWith(
       "/customers/search",
       expect.objectContaining({ method: "POST" }),
+      expect.any(Request),
     );
   });
 

@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid_email" }, { status: 400 });
   }
 
-  const response = await upstreamOfficerPasswordForgot(email);
+  const response = await upstreamOfficerPasswordForgot(email, request);
   const data = await parseUpstreamJson<{ message?: string }>(response);
 
   if (response.status === 429) {

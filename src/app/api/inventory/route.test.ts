@@ -32,7 +32,7 @@ describe("GET /api/inventory", () => {
     expect(body.items.length).toBeGreaterThan(0);
     expect(onboardingUpstream).toHaveBeenCalledWith("/inventory", {
       method: "GET",
-    });
+    }, expect.any(Request));
   });
 
   it("returns 401 when upstream unauthorized", async () => {

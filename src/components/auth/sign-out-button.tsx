@@ -1,9 +1,12 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import type { ReactNode } from "react";
 import { AppRoutes } from "@/lib/global/shared/routes";
 
-export async function performOfficerSignOut(): Promise<void> {
+export async function performOfficerSignOut(
+  callbackUrl: string = AppRoutes.home,
+): Promise<void> {
   await fetch(AppRoutes.apiOnboardingLogout, {
     method: "POST",
     credentials: "same-origin",
@@ -21,11 +24,12 @@ export async function performOfficerSignOut(): Promise<void> {
     redirect: "manual",
     body: new URLSearchParams({
       csrfToken,
-      callbackUrl: AppRoutes.home,
+      callbackUrl,
     }),
   });
 
-  window.location.assign(AppRoutes.home);
+  Sentry.setUser(null);
+  window.location.assign(callbackUrl);
 }
 
 export function SignOutButton({

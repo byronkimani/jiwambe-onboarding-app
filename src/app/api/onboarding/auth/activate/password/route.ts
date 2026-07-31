@@ -53,6 +53,7 @@ export async function POST(request: Request) {
   const response = await upstreamOfficerActivatePassword(
     activation.activation_session_id,
     parsed.data.password,
+    request,
   );
 
   const data = await parseUpstreamJson<Record<string, unknown>>(response);

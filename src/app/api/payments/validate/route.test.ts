@@ -44,6 +44,7 @@ describe("POST /api/payments/validate", () => {
     expect(onboardingUpstream).toHaveBeenCalledWith(
       "/payments/validate",
       expect.objectContaining({ method: "POST" }),
+      expect.any(Request),
     );
   });
 });

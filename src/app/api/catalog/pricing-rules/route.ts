@@ -3,10 +3,10 @@ import { onboardingUpstream } from "@/lib/global/onboarding/onboarding-bff";
 import { getCatalogPricingRulesPayload } from "@/lib/onboarding/catalog/pricing-rules";
 
 /** Contract: GET `/catalog/pricing-rules` — same min deposits as quote `minDepositKes`. */
-export async function GET() {
+export async function GET(request: Request) {
   const upstream = await onboardingUpstream("/catalog/pricing-rules", {
     method: "GET",
-  });
+  }, request);
   if (upstream instanceof NextResponse) {
     return upstream;
   }

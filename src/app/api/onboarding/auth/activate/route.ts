@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "activation_expired" }, { status: 410 });
   }
 
-  const response = await upstreamOfficerActivate(parsed.data.token);
+  const response = await upstreamOfficerActivate(parsed.data.token, request);
   const data = await parseUpstreamJson<{
     activation_session_id?: string;
     email_masked?: string;

@@ -307,6 +307,51 @@ paths:
         "410":
           $ref: "#/components/responses/ResetExpired"
 
+  /onboarding/auth/password/change:
+    post:
+      tags: [OfficerAuth]
+      summary: Change password while signed in
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, password, password_confirm]
+              properties:
+                current_password:
+                  type: string
+                password:
+                  type: string
+                  minLength: 8
+                password_confirm:
+                  type: string
+                  minLength: 8
+      responses:
+        "200":
+          description: Password updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        "400":
+          description: weak_password or invalid_body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+        "401":
+          description: invalid_credentials (wrong current password) or missing bearer token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorBody"
+
   /onboarding/agents/profile:
     get:
       tags: [OfficerAuth]

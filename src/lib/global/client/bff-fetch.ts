@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { signOut } from "next-auth/react";
 import {
   AppRoutes,
@@ -63,6 +64,15 @@ export async function bffFetch(
   if (response.status === 401 && triggersSessionRecovery(input)) {
     await recoverExpiredSession();
     throw new BffSessionExpiredError();
+  }
+
+  if (response.status >= 500) {
+    const path = requestPath(input);
+    Sentry.withScope((scope) => {
+      scope.setTag("bff_path", path);
+      scope.setLevel("error");
+      Sentry.captureMessage(`BFF ${response.status}: ${path}`);
+    });
   }
 
   return response;

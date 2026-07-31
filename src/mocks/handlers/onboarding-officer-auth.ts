@@ -348,4 +348,36 @@ export const onboardingOfficerAuthHandlers = [
 
     return HttpResponse.json({ ok: true });
   }),
+
+  http.post(authPath("passwordChange"), async ({ request }) => {
+    const { officers } = getOfficerAuthMockState();
+    const profile = officerProfileFromBearerToken(
+      request.headers.get("Authorization"),
+    );
+    if (!profile) {
+      return HttpResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+
+    const body = parseJson<{
+      current_password?: string;
+      password?: string;
+    }>(await request.json());
+    const currentPassword = body?.current_password ?? "";
+    const password = body?.password ?? "";
+    const email = normalizeEmail(profile.email);
+    const officer = officers.get(email);
+
+    if (!officer) {
+      return HttpResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+    if (officer.password !== currentPassword) {
+      return HttpResponse.json({ error: "invalid_credentials" }, { status: 401 });
+    }
+    if (password.length < 8) {
+      return HttpResponse.json({ error: "weak_password" }, { status: 400 });
+    }
+
+    officers.set(email, { ...officer, password });
+    return HttpResponse.json({ ok: true });
+  }),
 ];

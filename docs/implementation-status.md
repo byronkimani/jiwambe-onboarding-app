@@ -1,6 +1,6 @@
 # Implementation status
 
-**Last updated:** 2026-07-30  
+**Last updated:** 2026-07-31  
 **API:** [`api-contract.md`](api-contract.md) · OpenAPI [`api-contract.openapi.yaml`](api-contract.openapi.yaml)
 
 Legend: **Shipped** · **Demo UI** · **Planned** · **Deferred**
@@ -27,6 +27,12 @@ Legend: **Shipped** · **Demo UI** · **Planned** · **Deferred**
 | Security headers (CSP, Permissions-Policy) | **Shipped** |
 | CI dependency audit (`pnpm audit --audit-level=high`) | **Shipped** |
 | Client `bffFetch` 401 session recovery | **Shipped** — [`bff-fetch.ts`](../src/lib/global/client/bff-fetch.ts) |
+| Change password (signed-in profile) | **Demo UI** — `POST /api/onboarding/auth/password/change` + profile form; sign-out on success |
+| Sentry observability | **Shipped** — client/server/edge, tunnel `/monitoring`, replay-on-error, user context |
+| Structured server logging | **Shipped** — JSON stdout, upstream_call events, `X-Request-Id` propagation |
+| Enhanced health / uptime | **Shipped** — `GET /api/onboarding/health` with readiness checks; 503 when degraded |
+| Datadog / Grafana (logs + metrics) | **Planned (Phase 12)** — see [`implementation-plan.md`](implementation-plan.md) |
+| Session logging (officer timeline) | **Planned (Phase 12)** — `officerId` + optional `sessionTraceId` on logs; see implementation plan |
 | CSP production tightening (env split) | **Planned** — same pipeline |
 | CSP nonces (drop `'unsafe-inline'`) | **Planned** — same pipeline; after env split |
 | `/offline` static page | **Shipped** — connection message only (no sync queue) |
@@ -36,7 +42,7 @@ Legend: **Shipped** · **Demo UI** · **Planned** · **Deferred**
 
 | BFF | Purpose |
 |-----|---------|
-| `/api/onboarding/auth/*`, `/api/onboarding/logout` | Officer login, activate, password reset |
+| `/api/onboarding/auth/*`, `/api/onboarding/logout` | Officer login, activate, password reset/change |
 | `/api/onboarding/agents/profile` | Officer chrome profile |
 | `/api/onboarding/applications/*` | Application CRUD + lifecycle + documents + agreement/release |
 | `/api/customers/search` | Lead lookup |
@@ -50,7 +56,7 @@ Full upstream mapping and MSW coverage: [`api-contract.md`](api-contract.md#bff-
 
 ## Tests
 
-- Unit: `pnpm test --run` (BFF routes, schemas, MSW store, token refresh)
+- Unit: `pnpm test --run` (BFF routes, schemas, MSW store, token refresh, Sentry options, structured logging, health checks)
 - E2E: `pnpm test:e2e` — mobile 390×844; `capture-journey.spec.ts` full submit → desk
 
 ## Demo credentials

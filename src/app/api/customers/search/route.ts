@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       phone: normalized.phone ?? undefined,
       nationalId: normalized.nationalId ?? null,
     }),
-  });
+  }, request);
   if (upstream instanceof NextResponse) {
     return upstream;
   }
