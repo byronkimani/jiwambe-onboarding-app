@@ -27,10 +27,10 @@ describe("isE2eMode", () => {
 
 describe("getJiwambeApiBaseUrl", () => {
   it("returns configured URL without trailing slash", () => {
-    process.env.JIWAMBE_API_BASE_URL = "https://api.example.com/api/v1/";
+    process.env.JIWAMBE_API_BASE_URL = "https://api.example.com/";
     delete process.env.MOCK_JIWAMBE_API;
 
-    expect(getJiwambeApiBaseUrl()).toBe("https://api.example.com/api/v1");
+    expect(getJiwambeApiBaseUrl()).toBe("https://api.example.com");
   });
 
   it("defaults to mock base URL when MOCK_JIWAMBE_API=1 and URL unset", () => {

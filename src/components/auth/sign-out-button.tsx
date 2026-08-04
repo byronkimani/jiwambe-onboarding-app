@@ -2,12 +2,12 @@
 
 import * as Sentry from "@sentry/nextjs";
 import type { ReactNode } from "react";
-import { AppRoutes } from "@/lib/global/shared/routes";
+import { AppRoutes, FieldRoutes } from "@/lib/global/shared/routes";
 
 export async function performOfficerSignOut(
   callbackUrl: string = AppRoutes.home,
 ): Promise<void> {
-  await fetch(AppRoutes.apiOnboardingLogout, {
+  await fetch(FieldRoutes.authLogout, {
     method: "POST",
     credentials: "same-origin",
   });

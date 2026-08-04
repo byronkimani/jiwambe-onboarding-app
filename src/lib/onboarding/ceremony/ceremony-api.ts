@@ -1,9 +1,9 @@
 import { bffFetch } from "@/lib/global/client/bff-fetch";
 import type { OnboardingApplicationResource } from "@/lib/onboarding/application-resource";
 import {
-  apiOnboardingApplicationAgreement,
-  apiOnboardingApplicationRelease,
-  apiOnboardingApplicationReleaseOtp,
+  fieldApplicationAgreement,
+  fieldApplicationRelease,
+  fieldApplicationReleaseOtp,
 } from "@/lib/global/shared/routes";
 import type {
   AgreementActionRequest,
@@ -42,7 +42,7 @@ export async function apiAgreementAction(
   idOrRef: string,
   body: AgreementActionRequest,
 ) {
-  const response = await bffFetch(apiOnboardingApplicationAgreement(idOrRef), {
+  const response = await bffFetch(fieldApplicationAgreement(idOrRef), {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
@@ -52,7 +52,7 @@ export async function apiAgreementAction(
 }
 
 export async function apiReleaseSendOtp(idOrRef: string) {
-  const response = await bffFetch(apiOnboardingApplicationReleaseOtp(idOrRef), {
+  const response = await bffFetch(fieldApplicationReleaseOtp(idOrRef), {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
@@ -74,7 +74,7 @@ export async function apiReleaseComplete(
   idOrRef: string,
   body: ReleaseCompleteRequest,
 ) {
-  const response = await bffFetch(apiOnboardingApplicationRelease(idOrRef), {
+  const response = await bffFetch(fieldApplicationRelease(idOrRef), {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },

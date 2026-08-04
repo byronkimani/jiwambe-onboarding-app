@@ -1,6 +1,10 @@
 import * as Sentry from "@sentry/nextjs";
 import { signOut } from "next-auth/react";
 import {
+  createRequestId,
+  REQUEST_ID_HEADER,
+} from "@/lib/global/observability/request-id";
+import {
   AppRoutes,
   isProtectedApiPath,
   isPublicApiOnboardingPath,
@@ -56,9 +60,14 @@ export async function bffFetch(
   input: RequestInfo | URL,
   init?: RequestInit,
 ): Promise<Response> {
+  const headers = new Headers(init?.headers);
+  if (!headers.has(REQUEST_ID_HEADER)) {
+    headers.set(REQUEST_ID_HEADER, createRequestId());
+  }
   const response = await fetch(input, {
     credentials: "same-origin",
     ...init,
+    headers,
   });
 
   if (response.status === 401 && triggersSessionRecovery(input)) {

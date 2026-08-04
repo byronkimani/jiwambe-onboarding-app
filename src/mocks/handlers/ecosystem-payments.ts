@@ -3,10 +3,10 @@ import {
   mockDepositStk,
   mockDepositValidate,
 } from "@/mocks/deposits-mock-state";
-import { upstreamPath } from "@/mocks/handlers/upstream-path";
+import { fieldUpstreamPath } from "@/mocks/handlers/upstream-path";
 
 export const ecosystemPaymentsHandlers = [
-  http.post(upstreamPath("/payments/stk"), async ({ request }) => {
+  http.post(fieldUpstreamPath("/payments/stk"), async ({ request }) => {
     const body = await request.json();
     const result = mockDepositStk(body);
     if (!result.ok) {
@@ -19,7 +19,7 @@ export const ecosystemPaymentsHandlers = [
     });
   }),
 
-  http.post(upstreamPath("/payments/validate"), async ({ request }) => {
+  http.post(fieldUpstreamPath("/payments/validate"), async ({ request }) => {
     const body = await request.json();
     const result = mockDepositValidate(body);
     if (!result.ok) {

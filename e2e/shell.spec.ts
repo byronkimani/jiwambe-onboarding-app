@@ -10,6 +10,7 @@ import {
   AppRoutes,
   captureStage,
   deskApplicationAgreement,
+  FieldRoutes,
 } from "../src/lib/global/shared/routes";
 import {
   completeOfficerOtpSignIn,
@@ -140,7 +141,7 @@ test.describe("shell routes", () => {
   test("protected applications API returns 401 when anonymous", async ({
     request,
   }) => {
-    const response = await request.get(AppRoutes.apiOnboardingApplications);
+    const response = await request.get(FieldRoutes.applications);
     expect(response.status()).toBe(401);
   });
 
@@ -149,7 +150,7 @@ test.describe("shell routes", () => {
   }) => {
     await signInAsOnboardingAgent(page);
     await page.request.post(AppRoutes.apiOnboardingE2eResetMocks);
-    const response = await page.request.get(AppRoutes.apiOnboardingApplications);
+    const response = await page.request.get(FieldRoutes.applications);
     expect(response.ok()).toBeTruthy();
     const body = (await response.json()) as {
       applications: { referenceCode: string; lifecycleState: string }[];

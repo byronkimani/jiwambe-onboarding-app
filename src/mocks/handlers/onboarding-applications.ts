@@ -12,11 +12,11 @@ import {
   mockReleaseOtpSend,
   mockReleaseComplete,
 } from "@/mocks/applications-mock-state";
-import { upstreamPath } from "@/mocks/handlers/upstream-path";
+import { fieldUpstreamPath } from "@/mocks/handlers/upstream-path";
 
 /** Upstream worklist — mirrors docs/api-contract.md */
 export const onboardingApplicationsHandlers = [
-  http.get(upstreamPath("/onboarding/applications"), ({ request }) => {
+  http.get(fieldUpstreamPath("/applications"), ({ request }) => {
     const url = new URL(request.url);
     const lifecycleState = url.searchParams.get("lifecycleState");
     const scope = url.searchParams.get("scope");
@@ -24,7 +24,7 @@ export const onboardingApplicationsHandlers = [
     return HttpResponse.json({ applications });
   }),
 
-  http.post(upstreamPath("/onboarding/applications"), async ({ request }) => {
+  http.post(fieldUpstreamPath("/applications"), async ({ request }) => {
     const body = await request.json();
     const result = mockCreateApplication(body);
     if (!result.ok) {
@@ -36,7 +36,7 @@ export const onboardingApplicationsHandlers = [
     );
   }),
 
-  http.get(upstreamPath("/onboarding/applications/current"), () => {
+  http.get(fieldUpstreamPath("/applications/current"), () => {
     const result = mockGetCurrentApplication();
     if (!result.ok) {
       return HttpResponse.json({ error: result.error }, { status: result.status });
@@ -44,7 +44,7 @@ export const onboardingApplicationsHandlers = [
     return HttpResponse.json({ application: result.application });
   }),
 
-  http.get(upstreamPath("/onboarding/applications/:id"), ({ params }) => {
+  http.get(fieldUpstreamPath("/applications/:id"), ({ params }) => {
     const id = String(params.id);
     const application = findApplicationByIdOrRef(id);
     if (!application) {
@@ -53,7 +53,7 @@ export const onboardingApplicationsHandlers = [
     return HttpResponse.json({ application });
   }),
 
-  http.patch(upstreamPath("/onboarding/applications/:id"), async ({ params, request }) => {
+  http.patch(fieldUpstreamPath("/applications/:id"), async ({ params, request }) => {
     const id = String(params.id);
     const body = await request.json();
     const result = mockPatchApplication(id, body);
@@ -64,7 +64,7 @@ export const onboardingApplicationsHandlers = [
   }),
 
   http.post(
-    upstreamPath("/onboarding/applications/:id/pause"),
+    fieldUpstreamPath("/applications/:id/pause"),
     async ({ params, request }) => {
       const id = String(params.id);
       const body = await request.json();
@@ -77,7 +77,7 @@ export const onboardingApplicationsHandlers = [
   ),
 
   http.post(
-    upstreamPath("/onboarding/applications/:id/submit"),
+    fieldUpstreamPath("/applications/:id/submit"),
     async ({ params, request }) => {
       const id = String(params.id);
       const body = await request.json();
@@ -95,7 +95,7 @@ export const onboardingApplicationsHandlers = [
   ),
 
   http.post(
-    upstreamPath("/onboarding/applications/:id/disqualify"),
+    fieldUpstreamPath("/applications/:id/disqualify"),
     async ({ params, request }) => {
       const id = String(params.id);
       const body = await request.json();
@@ -108,7 +108,7 @@ export const onboardingApplicationsHandlers = [
   ),
 
   http.post(
-    upstreamPath("/onboarding/applications/:id/agreement"),
+    fieldUpstreamPath("/applications/:id/agreement"),
     async ({ params, request }) => {
       const id = String(params.id);
       const body = await request.json();
@@ -121,7 +121,7 @@ export const onboardingApplicationsHandlers = [
   ),
 
   http.post(
-    upstreamPath("/onboarding/applications/:id/release/otp"),
+    fieldUpstreamPath("/applications/:id/release/otp"),
     ({ params }) => {
       const id = String(params.id);
       const result = mockReleaseOtpSend(id);
@@ -133,7 +133,7 @@ export const onboardingApplicationsHandlers = [
   ),
 
   http.post(
-    upstreamPath("/onboarding/applications/:id/release"),
+    fieldUpstreamPath("/applications/:id/release"),
     async ({ params, request }) => {
       const id = String(params.id);
       const body = await request.json();

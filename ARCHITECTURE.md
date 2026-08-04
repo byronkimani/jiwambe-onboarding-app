@@ -36,7 +36,9 @@ PhotoSlot → POST BFF documents/init → upstream presign
 
 ## MSW
 
-`MOCK_JIWAMBE_API=1` → [`src/instrumentation.ts`](src/instrumentation.ts) starts handlers in [`src/mocks/`](src/mocks/).
+`MOCK_JIWAMBE_API=1` → [`src/instrumentation-node.ts`](src/instrumentation-node.ts) starts a **mock upstream HTTP server** on `JIWAMBE_API_BASE_URL` (default `127.0.0.1:18080`) via [`src/mocks/jiwambe-msw-server.ts`](src/mocks/jiwambe-msw-server.ts). BFF routes use normal `fetch()` to that URL — no global fetch patching (Turbopack-safe).
+
+Full local-dev guide: [`docs/local-development.md`](docs/local-development.md).
 
 ## Security
 
@@ -64,14 +66,16 @@ PhotoSlot → POST BFF documents/init → upstream presign
 
 - **Module:** [`structured-logger.ts`](src/lib/global/observability/structured-logger.ts) — JSON lines to stdout
 - **Events:** `upstream_call` (all [`upstreamRequest`](src/lib/global/shared/upstream-request.ts) calls), `bff_request` (health and other non-upstream routes)
-- **Correlation:** `X-Request-Id` set in [`proxy.ts`](src/proxy.ts) for `/api/*`; forwarded to upstream on all BFF and auth routes
+- **Correlation:** `X-Request-Id` set in [`proxy.ts`](src/proxy.ts) for `/api/*`; included in BFF structured logs (`upstream_call`, `bff_request`)
+- **Upstream header (deferred):** the BFF currently sets `X-Request-Id` on outbound upstream `fetch()` calls ([`upstream-request.ts`](src/lib/global/shared/upstream-request.ts)). **The platform API does not support request correlation or server-side logging yet** — forwarding this header can cause integration issues. Do **not** rely on upstream echoing or logging by request id until the platform contract adds it. See [`implementation-plan.md`](docs/implementation-plan.md#upstream-request-id-deferred).
+- **Today:** correlate failures using BFF stdout `requestId` only (one browser call → one BFF `upstream_call` line). Cross-service tracing waits on upstream.
 - **Log levels:** auth-path 400/401/403/429 → `info`; other 4xx → `warn`; 5xx/network → `error` ([`upstream-log-level.ts`](src/lib/global/observability/upstream-log-level.ts))
 - **Enable rules:** off when `E2E=1`; on in production; local dev requires `STRUCTURED_LOGGING_ENABLED=1`
 - **Future:** ship stdout to Datadog Logs or Grafana Loki (Phase 12)
 
 **Request vs session debugging (today):**
 
-- **`requestId`** — one HTTP request (one browser `fetch`). Links BFF `upstream_call` lines and upstream `X-Request-Id` for that call.
+- **`requestId`** — one HTTP request (one browser `fetch`). Links BFF log lines for that call. **Not** echoed or indexed on the platform API yet.
 - **Session timeline** — many requests while Jane is signed in. **Not shipped in logs yet**; use Sentry user filter for errors only.
 
 ### Session logging (future)

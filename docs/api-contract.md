@@ -1,7 +1,7 @@
 # Jiwambe Onboarding — API contract
 
 **Product:** `jiwambe-onboarding-app` (onboarding agents, tablet PWA)  
-**Last updated:** 2026-07-30
+**Last updated:** 2026-08-03
 
 This is the **only** API contract for this repository. The browser calls **Next.js BFF** routes only; BFF proxies to the Jiwambe platform API.
 
@@ -11,11 +11,12 @@ This is the **only** API contract for this repository. The browser calls **Next.
 
 | Item | Value |
 |------|--------|
-| Upstream base | `{JIWAMBE_API_BASE_URL}` (includes `/api/v1`) |
+| Upstream base | `{JIWAMBE_API_BASE_URL}` — host root only (e.g. `http://127.0.0.1:18080`) |
+| Correlation | `X-Request-ID` on browser → BFF → upstream (sanitized; echoed on responses) |
 | Auth | `Authorization: Bearer <access_token>` on protected upstream calls |
-| Officer auth BFF | `/api/onboarding/auth/*`, `/api/onboarding/logout` |
-| Onboarding domain BFF | `/api/onboarding/applications/*` |
-| Shared platform BFF | `/api/customers/*`, `/api/catalog/*`, `/api/inventory`, `/api/payments/*` |
+| Officer auth BFF | `/api/onboarding/auth/*` (password demo; MSW `/v1/_demo/auth/*`) |
+| Field realm BFF | `/v1/field/*` — **same path** as upstream field realm |
+| BFF-only | `/api/onboarding/health`, dev/e2e reset, mock document upload |
 | Money | Daily installment, min deposit, financed amount — **server-computed**; UI display-only ([`AGENTS.md`](../AGENTS.md)) |
 | Capture wizard | UI step order only; API stores one **application resource** (no `stages` in JSON) |
 | Types / Zod | [`application-schemas.ts`](../src/lib/onboarding/schemas/application-schemas.ts), [`deposit-schemas.ts`](../src/lib/onboarding/schemas/deposit-schemas.ts) |
@@ -23,38 +24,46 @@ This is the **only** API contract for this repository. The browser calls **Next.
 
 ### BFF → upstream map
 
-| BFF | Upstream | MSW | Notes |
-|-----|----------|-----|--------|
-| `POST /api/onboarding/auth/login` | `POST /onboarding/auth/login` | ✅ | |
-| `POST /api/onboarding/auth/otp/resend` | `POST /onboarding/auth/otp/resend` | ✅ | |
-| `POST /api/onboarding/logout` | `POST /onboarding/auth/logout` | ✅ | Refresh from JWT |
-| `POST /api/onboarding/auth/activate` | `POST /onboarding/auth/activate` | ✅ | |
-| `POST /api/onboarding/auth/activate/password` | `POST /onboarding/auth/activate/password` | ✅ | |
-| `POST /api/onboarding/auth/password/forgot` | `POST /onboarding/auth/password/forgot` | ✅ | |
-| `POST /api/onboarding/auth/password/reset` | `POST /onboarding/auth/password/reset` | ✅ | |
-| `POST /api/onboarding/auth/password/reset/password` | `POST /onboarding/auth/password/reset/password` | ✅ | |
-| `POST /api/onboarding/auth/password/change` | `POST /onboarding/auth/password/change` | ✅ | Authenticated; wrong current → `401 invalid_credentials` |
-| *(server only)* | `POST /onboarding/auth/otp/verify` | ✅ | Auth.js `authorize()` only — **no** public BFF route |
-| *(server only)* | `POST /onboarding/auth/refresh` | ✅ | Auth.js `jwt` callback only — see [Token refresh](#token-refresh) |
-| `GET /api/onboarding/agents/profile` | `GET /onboarding/agents/profile` | ✅ | Officer chrome + profile sheet |
-| `GET/POST/PATCH /api/onboarding/applications` | `/onboarding/applications` | ✅ | |
-| `GET /api/onboarding/applications/current` | `/onboarding/applications/current` | ✅ | |
-| `GET/PATCH /api/onboarding/applications/:id` | `/onboarding/applications/:id` | ✅ | PATCH requires `version` |
-| `POST …/:id/pause` | same | ✅ | |
-| `POST …/:id/submit` | same | ✅ | `422` + `blockingIssues` when invalid |
-| `POST …/:id/disqualify` | same | ✅ | `DRAFT` / `PAUSED` only |
-| `POST /api/customers/search` | `POST /customers/search` | ✅ | |
-| `GET /api/catalog/products` | `GET /catalog/products` | ✅ | |
-| `GET /api/catalog/pricing-rules` | `GET /catalog/pricing-rules` | ✅ | Fallback to local rules if upstream missing |
-| `POST /api/catalog/quotes` | `POST /catalog/quotes` | ✅ | Financing calculator; fallback local |
-| `GET /api/inventory` | `GET /inventory` | ✅ | Optional `?dealershipId=` |
-| `POST /api/payments/stk` | `POST /payments/stk` | ✅ | |
-| `POST /api/payments/validate` | `POST /payments/validate` | ✅ | |
-| `POST /api/onboarding/applications/:id/documents/init` | same | ✅ | Presigned upload — client PUT |
-| `POST /api/onboarding/applications/:id/documents/:documentId/complete` | same | ✅ | Marks document ready on resource |
-| `GET /api/onboarding/health` | — | — | BFF-only liveness + readiness; **503** when degraded |
+Field-realm routes use **path parity**: browser path = upstream path (e.g. `GET /v1/field/applications`).
 
-Route constants: [`routes.ts`](../src/lib/global/shared/routes.ts).
+| BFF (browser) | Upstream (`JIWAMBE_API_BASE_URL` + path) | MSW | Notes |
+|-----|----------|-----|--------|
+| `POST /api/onboarding/auth/login` | `POST /v1/_demo/auth/login` | ✅ | **Demo only** — password flow |
+| `POST /api/onboarding/auth/otp/resend` | `POST /v1/_demo/auth/otp/resend` | ✅ | |
+| `POST /v1/field/auth/logout` | `POST /v1/field/auth/logout` | ✅ | Refresh from JWT |
+| `POST /api/onboarding/auth/activate` | `POST /v1/_demo/auth/activate` | ✅ | |
+| `POST /api/onboarding/auth/activate/password` | `POST /v1/_demo/auth/activate/password` | ✅ | |
+| `POST /api/onboarding/auth/password/forgot` | `POST /v1/_demo/auth/password/forgot` | ✅ | |
+| `POST /api/onboarding/auth/password/reset` | `POST /v1/_demo/auth/password/reset` | ✅ | |
+| `POST /api/onboarding/auth/password/reset/password` | `POST /v1/_demo/auth/password/reset/password` | ✅ | |
+| `POST /api/onboarding/auth/password/change` | `POST /v1/_demo/auth/password/change` | ✅ | |
+| *(server only)* | `POST /v1/_demo/auth/otp/verify` | ✅ | Auth.js `authorize()` only |
+| *(server only)* | `POST /v1/field/auth/refresh` | ✅ | Auth.js `jwt` callback — see [Token refresh](#token-refresh) |
+| `GET /v1/field/auth/me` | `GET /v1/field/auth/me` | ✅ | Profile adapter for UI |
+| `GET/POST/PATCH /v1/field/applications` | same | ✅ | |
+| `GET /v1/field/applications/current` | same | ✅ | **Mock extension** |
+| `GET/PATCH /v1/field/applications/:id` | same | ✅ | PATCH requires `version` |
+| `POST …/:id/pause\|submit\|disqualify` | same | ✅ | |
+| `POST /v1/field/customers/search` | same | ✅ | **Mock extension** (upstream: `GET …/lookup`) |
+| `GET /v1/field/products` | same | ✅ | |
+| `GET /v1/field/products/pricing-rules` | same | ✅ | **Mock extension** |
+| `POST /v1/field/products/quote` | same | ✅ | |
+| `GET /v1/field/bikes/assignable` | same | ✅ | Optional `?dealershipId=` |
+| `POST /v1/field/payments/stk` | same | ✅ | |
+| `POST /v1/field/payments/validate` | same | ✅ | **Mock extension** |
+| `POST /v1/field/applications/:id/documents/init` | same | ✅ | Until `media/upload-url` |
+| `POST …/documents/:documentId/complete` | same | ✅ | |
+| `GET /api/onboarding/health` | — | — | BFF-only; **503** when degraded |
+
+Route constants: [`routes.ts`](../src/lib/global/shared/routes.ts) (`FieldRoutes`).
+
+### Gaps (follow-up)
+
+- `PATCH` → upstream `PUT` full-draft upsert
+- `GET /v1/field/view/worklist` instead of list/current
+- OTP-only field auth (drop password demo)
+- `media/upload-url` document flow
+- Station model (SC-16)
 
 ---
 
@@ -98,6 +107,8 @@ Manual QA (MSW): set `expires_in: 1` on OTP verify, wait, then call a protected 
 ## Officer profile
 
 `GET /onboarding/agents/profile` (authenticated) — officer chrome, profile sheet, dealership scoping for inventory.
+
+**Planned:** multi-location **working context** (`activeDealershipId` on upstream officer session, site picker, scoped worklist/inventory). See [`dealership-working-context-plan.md`](dealership-working-context-plan.md).
 
 | Field | Type | Notes |
 |-------|------|--------|
@@ -451,3 +462,12 @@ Desk flows (`/desk/applications/[id]/agreement`, `…/release`) are **demo UI** 
 ### Authorization
 
 Protected upstream calls use `Authorization: Bearer <access_token>`. The platform API derives the officer from the token and enforces assignment / dealership scope (403 on mismatch). BFF may pass `dealershipId` as a query hint (e.g. inventory); upstream must not trust client-supplied ids over the token.
+
+### Observability headers (BFF → upstream)
+
+| Header | BFF today | Platform today | Planned |
+|--------|-----------|----------------|---------|
+| `Authorization` | Required on protected routes | Supported | — |
+| `X-Request-Id` | Set on outbound [`upstreamRequest()`](../src/lib/global/shared/upstream-request.ts) | **Not supported** — no server-side request logging; forwarding may cause integration issues | Platform accepts optional id and logs it; BFF enables forward when `MOCK_JIWAMBE_API=0` and contract is live |
+
+Until then, debug using **BFF stdout** `requestId` on `upstream_call` events only ([`ARCHITECTURE.md`](../ARCHITECTURE.md)). See [`implementation-plan.md`](implementation-plan.md#upstream-request-id-deferred).

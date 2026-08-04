@@ -1,6 +1,6 @@
 /**
  * Central dictionary for application routes.
- * Use AppRoutes and helpers instead of hardcoded URL strings.
+ * Use AppRoutes / FieldRoutes and helpers instead of hardcoded URL strings.
  */
 export const CAPTURE_STAGE_KEYS = [
   "readiness",
@@ -16,6 +16,23 @@ export const CAPTURE_STAGE_KEYS = [
 ] as const;
 
 export type CaptureStageKey = (typeof CAPTURE_STAGE_KEYS)[number];
+
+const FIELD_PREFIX = "/v1/field" as const;
+
+/** Field-realm BFF paths — mirror upstream `/v1/field/*`. */
+export const FieldRoutes = {
+  applications: `${FIELD_PREFIX}/applications`,
+  applicationsCurrent: `${FIELD_PREFIX}/applications/current`,
+  authMe: `${FIELD_PREFIX}/auth/me`,
+  authLogout: `${FIELD_PREFIX}/auth/logout`,
+  customersSearch: `${FIELD_PREFIX}/customers/search`,
+  products: `${FIELD_PREFIX}/products`,
+  productsQuote: `${FIELD_PREFIX}/products/quote`,
+  productsPricingRules: `${FIELD_PREFIX}/products/pricing-rules`,
+  bikesAssignable: `${FIELD_PREFIX}/bikes/assignable`,
+  paymentsStk: `${FIELD_PREFIX}/payments/stk`,
+  paymentsValidate: `${FIELD_PREFIX}/payments/validate`,
+} as const;
 
 export const AppRoutes = {
   home: "/",
@@ -40,19 +57,10 @@ export const AppRoutes = {
   apiOnboardingAuthPasswordResetPassword:
     "/api/onboarding/auth/password/reset/password",
   apiOnboardingAuthPasswordChange: "/api/onboarding/auth/password/change",
-  apiOnboardingLogout: "/api/onboarding/logout",
-  apiOnboardingAgentsProfile: "/api/onboarding/agents/profile",
   apiOnboardingMockDocumentUpload: "/api/onboarding/mock/documents",
-  apiOnboardingApplications: "/api/onboarding/applications",
-  apiOnboardingApplicationsCurrent: "/api/onboarding/applications/current",
-  apiCustomersSearch: "/api/customers/search",
-  apiCatalogProducts: "/api/catalog/products",
-  apiCatalogQuotes: "/api/catalog/quotes",
-  apiCatalogPricingRules: "/api/catalog/pricing-rules",
-  apiInventory: "/api/inventory",
-  apiPaymentsStk: "/api/payments/stk",
-  apiPaymentsValidate: "/api/payments/validate",
   apiOnboardingE2eResetMocks: "/api/onboarding/e2e/reset-mocks",
+  apiOnboardingDevResetMocks: "/api/onboarding/dev/reset-mocks",
+  ...FieldRoutes,
 } as const;
 
 export function captureStage(
@@ -83,48 +91,68 @@ export function deskApplicationSummary(id: string): string {
   return `${deskApplication(id)}/summary`;
 }
 
-export function apiOnboardingApplication(id: string): string {
-  return `${AppRoutes.apiOnboardingApplications}/${encodeURIComponent(id)}`;
+export function fieldApplication(id: string): string {
+  return `${FieldRoutes.applications}/${encodeURIComponent(id)}`;
 }
 
-export function apiOnboardingApplicationPause(id: string): string {
-  return `${apiOnboardingApplication(id)}/pause`;
+export function fieldApplicationPause(id: string): string {
+  return `${fieldApplication(id)}/pause`;
 }
 
-export function apiOnboardingApplicationDisqualify(id: string): string {
-  return `${apiOnboardingApplication(id)}/disqualify`;
+export function fieldApplicationDisqualify(id: string): string {
+  return `${fieldApplication(id)}/disqualify`;
 }
 
-export function apiOnboardingApplicationSubmit(id: string): string {
-  return `${apiOnboardingApplication(id)}/submit`;
+export function fieldApplicationSubmit(id: string): string {
+  return `${fieldApplication(id)}/submit`;
 }
 
 export function apiOnboardingMockDocumentUpload(documentId: string): string {
   return `${AppRoutes.apiOnboardingMockDocumentUpload}/${encodeURIComponent(documentId)}/upload`;
 }
 
-export function apiOnboardingApplicationDocumentInit(id: string): string {
-  return `${apiOnboardingApplication(id)}/documents/init`;
+export function fieldApplicationDocumentInit(id: string): string {
+  return `${fieldApplication(id)}/documents/init`;
 }
 
-export function apiOnboardingApplicationDocumentComplete(
+export function fieldApplicationDocumentComplete(
   id: string,
   documentId: string,
 ): string {
-  return `${apiOnboardingApplication(id)}/documents/${encodeURIComponent(documentId)}/complete`;
+  return `${fieldApplication(id)}/documents/${encodeURIComponent(documentId)}/complete`;
 }
 
-export function apiOnboardingApplicationAgreement(id: string): string {
-  return `${apiOnboardingApplication(id)}/agreement`;
+export function fieldApplicationAgreement(id: string): string {
+  return `${fieldApplication(id)}/agreement`;
 }
 
-export function apiOnboardingApplicationRelease(id: string): string {
-  return `${apiOnboardingApplication(id)}/release`;
+export function fieldApplicationRelease(id: string): string {
+  return `${fieldApplication(id)}/release`;
 }
 
-export function apiOnboardingApplicationReleaseOtp(id: string): string {
-  return `${apiOnboardingApplication(id)}/release/otp`;
+export function fieldApplicationReleaseOtp(id: string): string {
+  return `${fieldApplication(id)}/release/otp`;
 }
+
+/** @deprecated Use fieldApplication */
+export const apiOnboardingApplication = fieldApplication;
+/** @deprecated Use fieldApplicationPause */
+export const apiOnboardingApplicationPause = fieldApplicationPause;
+/** @deprecated Use fieldApplicationDisqualify */
+export const apiOnboardingApplicationDisqualify = fieldApplicationDisqualify;
+/** @deprecated Use fieldApplicationSubmit */
+export const apiOnboardingApplicationSubmit = fieldApplicationSubmit;
+/** @deprecated Use fieldApplicationDocumentInit */
+export const apiOnboardingApplicationDocumentInit = fieldApplicationDocumentInit;
+/** @deprecated Use fieldApplicationDocumentComplete */
+export const apiOnboardingApplicationDocumentComplete =
+  fieldApplicationDocumentComplete;
+/** @deprecated Use fieldApplicationAgreement */
+export const apiOnboardingApplicationAgreement = fieldApplicationAgreement;
+/** @deprecated Use fieldApplicationRelease */
+export const apiOnboardingApplicationRelease = fieldApplicationRelease;
+/** @deprecated Use fieldApplicationReleaseOtp */
+export const apiOnboardingApplicationReleaseOtp = fieldApplicationReleaseOtp;
 
 export const PUBLIC_PATHS = [
   AppRoutes.home,
@@ -145,6 +173,7 @@ export const PUBLIC_API_ONBOARDING_PATHS = [
   AppRoutes.apiOnboardingAuthPasswordReset,
   AppRoutes.apiOnboardingAuthPasswordResetPassword,
   AppRoutes.apiOnboardingE2eResetMocks,
+  AppRoutes.apiOnboardingDevResetMocks,
 ] as const;
 
 export const DESK_PATH_PREFIX = "/desk" as const;
@@ -183,13 +212,7 @@ export function isProtectedPath(pathname: string): boolean {
   );
 }
 
-const PROTECTED_API_PREFIXES = [
-  "/api/onboarding",
-  "/api/catalog",
-  "/api/customers",
-  "/api/inventory",
-  "/api/payments",
-] as const;
+const PROTECTED_API_PREFIXES = [FIELD_PREFIX] as const;
 
 export function isProtectedApiPath(pathname: string): boolean {
   return PROTECTED_API_PREFIXES.some((prefix) => pathname.startsWith(prefix));

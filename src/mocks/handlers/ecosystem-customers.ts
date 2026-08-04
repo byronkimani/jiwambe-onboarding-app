@@ -6,10 +6,10 @@ import {
   customerLookupRequestSchema,
   normalizeCustomerLookupRequest,
 } from "@/lib/onboarding/schemas/application-schemas";
-import { upstreamPath } from "@/mocks/handlers/upstream-path";
+import { fieldUpstreamPath } from "@/mocks/handlers/upstream-path";
 
 export const ecosystemCustomersHandlers = [
-  http.post(upstreamPath("/customers/search"), async ({ request }) => {
+  http.post(fieldUpstreamPath("/customers/search"), async ({ request }) => {
     const body = await request.json();
     const parsed = customerLookupRequestSchema.safeParse(body);
     if (!parsed.success) {

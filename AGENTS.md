@@ -1,7 +1,7 @@
 # Jiwambe Onboarding — Agent rules
 
 **Product:** Jiwambe Onboarding (`jiwambe-onboarding-app`)  
-**Spec:** [`docs/`](docs/)
+**Spec:** [`docs/`](docs/) — incl. [`dealership-working-context-plan.md`](docs/dealership-working-context-plan.md) (planned)
 
 ## Hard rules
 
@@ -14,6 +14,10 @@
 7. **UI** — shadcn/ui + Tailwind 4; follow [`docs/prototype/`](docs/prototype/) unless [`docs/overview.md`](docs/overview.md) overrides.
 8. **No `NEXT_PUBLIC_*`** for secrets or upstream API URLs.
 9. **English-only v1** — Kiswahili deferred until spec updates.
+10. **Mock upstream** — with `MOCK_JIWAMBE_API=1`, never rely on global `fetch` patching; use the mock HTTP server in [`jiwambe-msw-server.ts`](src/mocks/jiwambe-msw-server.ts). See [`docs/local-development.md`](docs/local-development.md).
+11. **Demo credentials** — [`demo-credentials.ts`](src/lib/global/auth/demo-credentials.ts) is the single source of truth; keep `README.md` and `docs/overview.md` in sync.
+12. **Doc updates mandatory** — any change to MSW, instrumentation, env vars, or auth flow must update `docs/local-development.md` in the same PR.
+13. **`X-Request-ID`** — BFF generates or sanitizes `X-Request-ID` per upstream doc 01 §18 (`^[A-Za-z0-9_-]{8,64}$`), echoes on every BFF response, and forwards the same value on `upstreamRequest()`. See [`request-id.ts`](src/lib/global/observability/request-id.ts).
 
 ## Commands
 

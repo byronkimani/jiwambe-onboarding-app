@@ -1,0 +1,16 @@
+---
+description: MSW mock upstream, local dev credentials, and mock state lifecycle
+alwaysApply: true
+---
+
+# Local dev — MSW mock upstream
+
+Read [`docs/local-development.md`](docs/local-development.md) before changing mock, auth, or env setup.
+
+## Hard rules
+
+1. **`MOCK_JIWAMBE_API=1`** — BFF `fetch()` targets `JIWAMBE_API_BASE_URL` (default `http://127.0.0.1:18080/api/v1`). A mock **HTTP server** must listen on that port ([`jiwambe-msw-server.ts`](src/mocks/jiwambe-msw-server.ts)). Do **not** use `setupServer().listen()` fetch patching alone — Turbopack API routes will `ECONNREFUSED`.
+2. **Demo credentials** — only [`demo-credentials.ts`](src/lib/global/auth/demo-credentials.ts). Never document "any valid email" for MSW.
+3. **Mock mutations** — password change / activation QA must have recovery: `POST /api/onboarding/dev/reset-mocks` or restart `pnpm dev`.
+4. **Same PR** — MSW/instrumentation/env/auth changes → update `docs/local-development.md`, `README.md` quick start if creds change, `ARCHITECTURE.md` MSW section if architecture changes.
+5. **Verify** — after MSW changes: `pnpm test --run` including `jiwambe-msw-server.test.ts`; curl `POST /api/onboarding/auth/login` with demo creds when feasible.

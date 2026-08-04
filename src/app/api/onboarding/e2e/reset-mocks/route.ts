@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { isE2eMode } from "@/lib/global/shared/env";
-import { resetApplicationsMockState } from "@/mocks/applications-mock-state";
-import { resetDepositsMockState } from "@/mocks/deposits-mock-state";
-import { resetDocumentsMockState } from "@/mocks/documents-mock-state";
-import { resetOfficerAuthMockState } from "@/mocks/officer-auth-mock-state";
+import { resetAllOnboardingMockState } from "@/mocks/reset-all-mock-state";
 
 export async function POST(request: Request) {
   if (!isE2eMode() || process.env.NODE_ENV === "production") {
@@ -15,9 +12,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  resetOfficerAuthMockState();
-  resetApplicationsMockState();
-  resetDepositsMockState();
-  resetDocumentsMockState();
+  resetAllOnboardingMockState();
   return NextResponse.json({ ok: true });
 }

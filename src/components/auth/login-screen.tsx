@@ -1,6 +1,7 @@
 "use client";
 
 import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AuthScreenLayout } from "@/components/auth/auth-screen-layout";
 import { OfficerLoginStep } from "@/components/auth/officer-login-step";
@@ -30,12 +31,15 @@ export function LoginScreen({
   passwordChanged?: boolean;
   sessionExpired?: boolean;
 }) {
+  const router = useRouter();
   const [step, setStep] = useState<Step>("login");
 
   useEffect(() => {
     if (!sessionExpired) return;
-    void signOut({ redirect: false });
-  }, [sessionExpired]);
+    void signOut({ redirect: false }).then(() => {
+      router.replace(AppRoutes.home);
+    });
+  }, [router, sessionExpired]);
   const [email, setEmail] = useState("");
   const [otpSessionId, setOtpSessionId] = useState("");
   const [maskedPhone, setMaskedPhone] = useState("");

@@ -15,6 +15,8 @@
 | Doc | Purpose |
 |-----|---------|
 | [`implementation-plan.md`](implementation-plan.md) | Remaining delivery phases (brief) |
+| [`dealership-working-context-plan.md`](dealership-working-context-plan.md) | **Planned** — multi-location dealers, working context, login → desk API sequence |
+| [`local-development.md`](local-development.md) | MSW mock upstream, demo creds, troubleshooting |
 | [`prototype-gaps.md`](prototype-gaps.md) | Open production gaps vs prototype |
 | [`onboarding-disqualify-rules.md`](onboarding-disqualify-rules.md) | Disqualify business rules (summary + link to contract) |
 

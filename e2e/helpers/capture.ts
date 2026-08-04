@@ -60,7 +60,7 @@ export async function selectPortalCustomer(
   await Promise.all([
     page.waitForResponse(
       (res) =>
-        res.url().includes("/api/customers/search") &&
+        res.url().includes("/v1/field/customers/search") &&
         res.request().method() === "POST" &&
         res.ok(),
       { timeout: 30_000 },
@@ -196,7 +196,7 @@ export async function completeModelStage(page: Page): Promise<void> {
 export async function waitForProductCatalog(page: Page): Promise<void> {
   await page.waitForResponse(
     (res) =>
-      res.url().includes("/api/catalog/products") && res.ok(),
+      res.url().includes("/v1/field/products") && res.ok(),
     { timeout: 30_000 },
   );
   await expect(page.getByRole("button", { name: "Spiro TVS" })).toBeVisible({
@@ -222,7 +222,7 @@ export async function completeProductStageWithStk(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Spiro TVS" }).click();
   await page.waitForResponse(
     (res) =>
-      res.url().includes("/api/catalog/quotes") &&
+      res.url().includes("/v1/field/products/quote") &&
       res.request().method() === "POST" &&
       res.ok(),
     { timeout: 30_000 },

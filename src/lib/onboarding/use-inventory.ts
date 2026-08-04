@@ -7,7 +7,7 @@ import {
   InventoryRules,
 } from "@/lib/onboarding/schemas/inventory-schemas";
 import { DEFAULT_INVENTORY_RULES } from "@/lib/onboarding/inventory/inventory-catalog";
-import { AppRoutes } from "@/lib/global/shared/routes";
+import { FieldRoutes } from "@/lib/global/shared/routes";
 
 export function useInventory(dealershipId?: string | null) {
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -24,7 +24,7 @@ export function useInventory(dealershipId?: string | null) {
         ? `?dealershipId=${encodeURIComponent(dealershipId)}`
         : "";
       const response = await bffFetch(
-        `${AppRoutes.apiInventory}${params}`,
+        `${FieldRoutes.bikesAssignable}${params}`,
         { credentials: "same-origin" },
       );
       if (!response.ok) {

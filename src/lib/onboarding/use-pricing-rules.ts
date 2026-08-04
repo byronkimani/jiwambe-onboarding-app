@@ -2,7 +2,7 @@
 
 import { bffFetch } from "@/lib/global/client/bff-fetch";
 import { useEffect, useState } from "react";
-import { AppRoutes } from "@/lib/global/shared/routes";
+import { FieldRoutes } from "@/lib/global/shared/routes";
 
 export type OperatingModelMinDeposit = {
   operatingModel: string;
@@ -21,7 +21,7 @@ export function usePricingRules() {
       setLoading(true);
       setError(null);
       try {
-        const response = await bffFetch(AppRoutes.apiCatalogPricingRules, {
+        const response = await bffFetch(FieldRoutes.productsPricingRules, {
           credentials: "same-origin",
         });
         if (!response.ok) {

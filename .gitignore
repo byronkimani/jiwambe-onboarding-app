@@ -19,6 +19,14 @@
 /playwright/.cache/
 *.lcov
 
+# manual QA — local Google Sheets starter kit (live workbook lives in Drive)
+/manual-qa-templates/
+
+# cursor — local IDE state; shared rules under .cursor/rules/ may still be committed
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**
+
 # next.js
 /.next/
 /out/

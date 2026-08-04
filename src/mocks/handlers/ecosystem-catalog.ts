@@ -2,16 +2,16 @@ import { http, HttpResponse } from "msw";
 import { getCatalogPricingRulesPayload } from "@/lib/onboarding/catalog/pricing-rules";
 import { resolveCatalogQuote } from "@/lib/onboarding/catalog/quotes";
 import { getSeedCatalogProducts } from "@/lib/onboarding/fixtures/catalog-fixtures";
-import { upstreamPath } from "@/mocks/handlers/upstream-path";
+import { fieldUpstreamPath } from "@/mocks/handlers/upstream-path";
 
 export const ecosystemCatalogHandlers = [
-  http.get(upstreamPath("/catalog/products"), () => {
+  http.get(fieldUpstreamPath("/products"), () => {
     return HttpResponse.json({ products: getSeedCatalogProducts() });
   }),
-  http.get(upstreamPath("/catalog/pricing-rules"), () => {
+  http.get(fieldUpstreamPath("/products/pricing-rules"), () => {
     return HttpResponse.json(getCatalogPricingRulesPayload());
   }),
-  http.post(upstreamPath("/catalog/quotes"), async ({ request }) => {
+  http.post(fieldUpstreamPath("/products/quote"), async ({ request }) => {
     const body = (await request.json()) as {
       productId?: string;
       depositKes?: number;
