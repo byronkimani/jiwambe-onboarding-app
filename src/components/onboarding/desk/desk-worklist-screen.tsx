@@ -13,7 +13,7 @@ import { OnboardingTopBar } from "@/components/onboarding/chrome/top-bar";
 import { ApplicationFolderCard } from "@/components/onboarding/desk/application-folder-card";
 import { DeskBoardView } from "@/components/onboarding/desk/desk-board-view";
 import { ProtoBtn } from "@/components/onboarding/atoms/proto-field";
-import { AppRoutes, captureStage } from "@/lib/global/shared/routes";
+import { AppRoutes, captureStage, FieldRoutes } from "@/lib/global/shared/routes";
 import { apiFetchCurrentApplication } from "@/lib/onboarding/capture/application-api";
 import { firstIncompleteCaptureStage } from "@/lib/onboarding/capture/first-incomplete-capture-stage";
 import { hydrateCaptureFormFromResource } from "@/lib/onboarding/capture/resource-to-capture-form";
@@ -59,8 +59,8 @@ export function DeskWorklistScreen({
     const fetchJson = async (query: string) => {
       const response = await bffFetch(
         query
-          ? `${AppRoutes.apiOnboardingApplications}?${query}`
-          : AppRoutes.apiOnboardingApplications,
+          ? `${FieldRoutes.applications}?${query}`
+          : FieldRoutes.applications,
         { credentials: "same-origin" },
       );
       if (!response.ok) return null;

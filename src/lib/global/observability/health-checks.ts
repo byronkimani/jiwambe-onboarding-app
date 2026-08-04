@@ -3,6 +3,7 @@ import {
   isMockJiwambeApiEnabled,
 } from "@/lib/global/shared/env";
 import { getSentryRelease } from "@/lib/global/observability/sentry-options";
+import { ensureJiwambeMsw } from "@/mocks/jiwambe-msw-server";
 
 export type HealthCheckStatus = "ok" | "failed" | "skipped";
 
@@ -35,15 +36,10 @@ export function checkAuthConfig(): HealthCheckStatus {
   return "failed";
 }
 
-export async function checkUpstreamReachability(
-  fetchImpl: typeof fetch = fetch,
+async function probeUpstreamUrl(
+  url: string,
+  fetchImpl: typeof fetch,
 ): Promise<HealthCheckStatus> {
-  if (isMockJiwambeApiEnabled()) {
-    return "skipped";
-  }
-
-  const base = getJiwambeApiBaseUrl();
-  const url = `${base}/catalog/products?limit=1`;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), UPSTREAM_PROBE_TIMEOUT_MS);
 
@@ -59,6 +55,22 @@ export async function checkUpstreamReachability(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export async function checkUpstreamReachability(
+  fetchImpl: typeof fetch = fetch,
+): Promise<HealthCheckStatus> {
+  if (isMockJiwambeApiEnabled()) {
+    try {
+      await ensureJiwambeMsw();
+    } catch {
+      return "failed";
+    }
+  }
+
+  const base = getJiwambeApiBaseUrl();
+  const url = `${base}/v1/field/products?limit=1`;
+  return probeUpstreamUrl(url, fetchImpl);
 }
 
 export async function runHealthChecks(

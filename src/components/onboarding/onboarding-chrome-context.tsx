@@ -10,7 +10,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { AppRoutes } from "@/lib/global/shared/routes";
+import { FieldRoutes } from "@/lib/global/shared/routes";
 import type { OfficerProfile } from "@/lib/onboarding/types";
 import {
   SEED_NOTIFICATIONS,
@@ -81,7 +81,7 @@ export function OnboardingChromeProvider({
 
     async function loadProfile() {
       try {
-        const response = await bffFetch(AppRoutes.apiOnboardingAgentsProfile, {
+        const response = await bffFetch(FieldRoutes.authMe, {
           credentials: "same-origin",
         });
         if (!response.ok || cancelled) return;

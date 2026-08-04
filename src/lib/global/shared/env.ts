@@ -25,9 +25,8 @@ export function isE2eMode(): boolean {
   return process.env.E2E === "1";
 }
 
-/** Matches `.env.local.example` and CI; MSW handlers match any host under `/api/v1`. */
-export const DEFAULT_MOCK_JIWAMBE_API_BASE_URL =
-  "http://127.0.0.1:18080/api/v1";
+/** Matches `.env.local.example` and CI; MSW handlers match any host under `/v1`. */
+export const DEFAULT_MOCK_JIWAMBE_API_BASE_URL = "http://127.0.0.1:18080";
 
 export function getJiwambeApiBaseUrl(): string {
   const { JIWAMBE_API_BASE_URL } = getServerEnv();

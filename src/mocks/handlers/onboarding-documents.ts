@@ -1,6 +1,6 @@
 import { http, HttpResponse } from "msw";
 import { documentInitRequestSchema } from "@/lib/onboarding/schemas/document-schemas";
-import { upstreamPath } from "@/mocks/handlers/upstream-path";
+import { fieldUpstreamPath } from "@/mocks/handlers/upstream-path";
 import {
   mockCompleteDocument,
   mockInitDocument,
@@ -9,7 +9,7 @@ import {
 
 export const onboardingDocumentsHandlers = [
   http.post(
-    upstreamPath("/onboarding/applications/:id/documents/init"),
+    fieldUpstreamPath("/applications/:id/documents/init"),
     async ({ params, request }) => {
       const id = String(params.id);
       let body: unknown;
@@ -47,8 +47,8 @@ export const onboardingDocumentsHandlers = [
   }),
 
   http.post(
-    upstreamPath(
-      "/onboarding/applications/:id/documents/:documentId/complete",
+    fieldUpstreamPath(
+      "/applications/:id/documents/:documentId/complete",
     ),
     ({ params }) => {
       const id = String(params.id);

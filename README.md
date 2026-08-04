@@ -21,9 +21,11 @@ cp .env.local.example .env.local
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). With `MOCK_JIWAMBE_API=1` (default in the example), outbound API calls use [MSW](https://mswjs.io/) when handlers are added.
+Open [http://localhost:3000](http://localhost:3000). With `MOCK_JIWAMBE_API=1` (default in the example), the BFF calls a local mock upstream on `127.0.0.1:18080` — see [`docs/local-development.md`](docs/local-development.md).
 
-**Demo sign-in:** any valid email and password (8+ characters) → OTP **`123456`** → desk. Example email: `jane.ochieng@contractor.jiwambe.com`, password: `demopass1`.
+**Demo sign-in:** `john@jiwambe.com` / `demo12345` → OTP **`123456`** → desk. Credentials are defined in [`src/lib/global/auth/demo-credentials.ts`](src/lib/global/auth/demo-credentials.ts).
+
+**Reset mock state after QA:** `pnpm dev:reset-mocks` (or restart `pnpm dev`).
 
 **UX reference:** [`docs/prototype/`](docs/prototype/) (serve statically for full field-tablet flows).
 
@@ -41,7 +43,7 @@ E2E: **tablet** project for `shell.spec.ts`; **mobile-chrome** (390×844) for `c
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `JIWAMBE_API_BASE_URL` | Deploy | Upstream root **including** `/api/v1` — **server only** |
+| `JIWAMBE_API_BASE_URL` | Deploy | Upstream host root (e.g. `https://api.jiwambe.co.ke`) — **server only** |
 | `MOCK_JIWAMBE_API` | Local/CI | Set `1` to enable MSW |
 | `NEXTAUTH_SECRET` | Phase 3+ | Session signing |
 | `NEXTAUTH_URL` | Phase 3+ | App origin |

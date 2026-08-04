@@ -4,24 +4,12 @@ vi.mock("@/lib/global/shared/env", () => ({
   isE2eMode: vi.fn(),
 }));
 
-vi.mock("@/mocks/officer-auth-mock-state", () => ({
-  resetOfficerAuthMockState: vi.fn(),
-}));
-
-vi.mock("@/mocks/applications-mock-state", () => ({
-  resetApplicationsMockState: vi.fn(),
-}));
-
-vi.mock("@/mocks/deposits-mock-state", () => ({
-  resetDepositsMockState: vi.fn(),
-}));
-
-vi.mock("@/mocks/documents-mock-state", () => ({
-  resetDocumentsMockState: vi.fn(),
+vi.mock("@/mocks/reset-all-mock-state", () => ({
+  resetAllOnboardingMockState: vi.fn(),
 }));
 
 import { isE2eMode } from "@/lib/global/shared/env";
-import { resetOfficerAuthMockState } from "@/mocks/officer-auth-mock-state";
+import { resetAllOnboardingMockState } from "@/mocks/reset-all-mock-state";
 import { POST } from "./route";
 
 describe("POST /api/onboarding/e2e/reset-mocks", () => {
@@ -38,7 +26,7 @@ describe("POST /api/onboarding/e2e/reset-mocks", () => {
 
     const response = await POST(new Request("http://localhost", { method: "POST" }));
     expect(response.status).toBe(404);
-    expect(resetOfficerAuthMockState).not.toHaveBeenCalled();
+    expect(resetAllOnboardingMockState).not.toHaveBeenCalled();
   });
 
   it("returns 404 in production even when E2E mode is enabled", async () => {
@@ -55,7 +43,7 @@ describe("POST /api/onboarding/e2e/reset-mocks", () => {
 
     const response = await POST(new Request("http://localhost", { method: "POST" }));
     expect(response.status).toBe(200);
-    expect(resetOfficerAuthMockState).toHaveBeenCalledOnce();
+    expect(resetAllOnboardingMockState).toHaveBeenCalledOnce();
     await expect(response.json()).resolves.toEqual({ ok: true });
   });
 

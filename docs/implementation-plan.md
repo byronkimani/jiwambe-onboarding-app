@@ -13,7 +13,31 @@
 
 - Point `MOCK_JIWAMBE_API=0` at staging `JIWAMBE_API_BASE_URL`
 - Replace local quote/pricing fallbacks with upstream-only responses
-- Wire document `init` / `complete` when backend is ready
+- Wire document `init` / `complete` when backend media API is ready
+- **Dealership working context** — see [`dealership-working-context-plan.md`](dealership-working-context-plan.md) (multi-location officers, upstream `activeDealershipId`, login → desk sequence)
+
+### Upstream request id (shipped)
+
+The BFF generates or sanitizes `X-Request-ID` per upstream doc 01 §18, echoes it on every BFF response, and forwards the same value on `upstreamRequest()`. Correlate BFF `bff_request` and `upstream_call` logs by `requestId`.
+
+| Layer | Behavior |
+|-------|----------|
+| `proxy.ts` | Ensures `X-Request-ID` on `/api/*` and `/v1/*` |
+| `bffFetch` | Sends `X-Request-ID` from the browser when absent |
+| `upstreamRequest()` | Forwards `X-Request-ID`; logs echoed upstream id when present |
+
+## Phase 10b — Dealership locations & working context (planned)
+
+Full spec: [`dealership-working-context-plan.md`](dealership-working-context-plan.md).
+
+| Track | Scope |
+|-------|--------|
+| **Upstream** | `Location`, officer `allowedDealershipIds`, session `activeDealershipId`, `POST /agents/working-context`, scoped create/list/inventory |
+| **BFF** | Mirror working-context route; profile fields; stop trusting client `dealershipId` on create |
+| **UI** | Post-login site picker, chrome “Working at” chip, scoped desk/inventory |
+| **E2E** | Login → pick site → desk worklist |
+
+Blocked on product answers in plan §8 (roles, transfer rules, commission attribution).
 
 ## Phase 11 — Production hardening
 
@@ -62,7 +86,7 @@ Keep `release` aligned with Sentry (`VERCEL_GIT_COMMIT_SHA` or `SENTRY_RELEASE`)
 
 **Shipped today:** per-request `requestId` on each HTTP call; Sentry `setUser` for errors after login. That answers *“what failed on this one API call?”* — not *“what did officer Jane do across her sitting?”*
 
-Session logging adds **officer-scoped, multi-request timelines** in structured logs (and optionally Sentry tags). No Redis/Upstash — ids pass via headers and JWT like `requestId`.
+Session logging adds **officer-scoped, multi-request timelines** in structured logs (and optionally Sentry tags). No Redis/Upstash — ids pass via headers and JWT; `X-Request-ID` is forwarded to upstream (see [Upstream request id (shipped)](#upstream-request-id-shipped)).
 
 | Tier | Goal | Implementation sketch |
 |------|------|---------------------|

@@ -1,5 +1,5 @@
 import { bffFetch } from "@/lib/global/client/bff-fetch";
-import { apiOnboardingApplicationDocumentComplete, apiOnboardingApplicationDocumentInit } from "@/lib/global/shared/routes";
+import { fieldApplicationDocumentComplete, fieldApplicationDocumentInit } from "@/lib/global/shared/routes";
 import type { DocumentPurpose } from "@/lib/onboarding/documents/document-purposes";
 import {
   resolveCaptureUploadMime,
@@ -32,7 +32,7 @@ export async function uploadApplicationDocument(options: {
   const contentType = resolveCaptureUploadMime(options.file);
 
   const initResponse = await bffFetch(
-    apiOnboardingApplicationDocumentInit(options.applicationId),
+    fieldApplicationDocumentInit(options.applicationId),
     {
       method: "POST",
       credentials: "same-origin",
@@ -70,7 +70,7 @@ export async function uploadApplicationDocument(options: {
   }
 
   const completeResponse = await bffFetch(
-    apiOnboardingApplicationDocumentComplete(options.applicationId, documentId),
+    fieldApplicationDocumentComplete(options.applicationId, documentId),
     {
       method: "POST",
       credentials: "same-origin",

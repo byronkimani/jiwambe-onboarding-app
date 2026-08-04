@@ -11,9 +11,15 @@ vi.mock("@/lib/global/observability/structured-logger", () => ({
   logError: (...args: unknown[]) => logErrorMock(...args),
 }));
 
+vi.mock("@/mocks/jiwambe-msw-server", () => ({
+  ensureJiwambeMsw: vi.fn().mockResolvedValue(undefined),
+}));
+
+const isMockJiwambeApiEnabledMock = vi.fn(() => false);
+
 vi.mock("@/lib/global/shared/env", () => ({
-  isMockJiwambeApiEnabled: () => false,
-  getJiwambeApiBaseUrl: () => "http://upstream.test/api/v1",
+  isMockJiwambeApiEnabled: () => isMockJiwambeApiEnabledMock(),
+  getJiwambeApiBaseUrl: () => "http://upstream.test",
 }));
 
 describe("upstreamRequest", () => {
@@ -21,6 +27,7 @@ describe("upstreamRequest", () => {
 
   beforeEach(() => {
     fetchMock.mockReset();
+    isMockJiwambeApiEnabledMock.mockReturnValue(false);
     logInfoMock.mockReset();
     logWarnMock.mockReset();
     logErrorMock.mockReset();
@@ -36,19 +43,19 @@ describe("upstreamRequest", () => {
     const { upstreamRequest } = await import("@/lib/global/shared/upstream-request");
 
     await upstreamRequest(
-      "/catalog/products",
+      "/v1/field/products",
       { method: "GET" },
-      { requestId: "req-abc" },
+      { requestId: "req-abc12345" },
     );
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(new Headers(init.headers).get(REQUEST_ID_HEADER)).toBe("req-abc");
+    expect(new Headers(init.headers).get(REQUEST_ID_HEADER)).toBe("req-abc12345");
     expect(logInfoMock).toHaveBeenCalledWith(
       "upstream_call",
       expect.objectContaining({
         event: "upstream_call",
-        requestId: "req-abc",
-        upstreamPath: "/catalog/products",
+        requestId: "req-abc12345",
+        upstreamPath: "/v1/field/products",
         method: "GET",
         status: 200,
       }),
@@ -71,7 +78,7 @@ describe("upstreamRequest", () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 401 }));
     const { upstreamRequest } = await import("@/lib/global/shared/upstream-request");
 
-    await upstreamRequest("/onboarding/auth/login", { method: "POST" });
+    await upstreamRequest("/v1/_demo/auth/login", { method: "POST" });
 
     expect(logInfoMock).toHaveBeenCalledWith(
       "upstream_call",
@@ -92,7 +99,7 @@ describe("upstreamRequest", () => {
     );
   });
 
-  it("logs error when fetch throws", async () => {
+  it("logs error when fetch throws for real upstream", async () => {
     fetchMock.mockRejectedValue(new Error("network down"));
     const { upstreamRequest } = await import("@/lib/global/shared/upstream-request");
 
@@ -100,6 +107,24 @@ describe("upstreamRequest", () => {
     expect(logErrorMock).toHaveBeenCalledWith(
       "upstream_call",
       expect.objectContaining({ error: "network down", status: 0 }),
+    );
+  });
+
+  it("throws MockUpstreamUnavailableError when mock upstream refuses connection", async () => {
+    isMockJiwambeApiEnabledMock.mockReturnValue(true);
+    fetchMock.mockRejectedValue(
+      Object.assign(new TypeError("fetch failed"), {
+        cause: Object.assign(new Error("connect ECONNREFUSED"), {
+          code: "ECONNREFUSED",
+        }),
+      }),
+    );
+    const { upstreamRequest, MockUpstreamUnavailableError } = await import(
+      "@/lib/global/shared/upstream-request"
+    );
+
+    await expect(upstreamRequest("/v1/_demo/auth/login")).rejects.toBeInstanceOf(
+      MockUpstreamUnavailableError,
     );
   });
 });

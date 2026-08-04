@@ -85,7 +85,7 @@ Internal capture draft (`DRAFT` / in-wizard) is not shown on the public board un
 - Post-login landing: **desk / worklist** (`/desk`)
 - Sign out: BFF revokes upstream session, clears cookie
 
-**Local demo (MSW):** any valid email and 8+ character password reach the OTP step; code **`123456`** completes sign-in as the seeded officer. Upstream MSW login still uses the demo agent phone internally until the API contract supports email + OTP end-to-end.
+**Local demo (MSW):** `john@jiwambe.com` / `demo12345` → OTP **`123456`** (see [`demo-credentials.ts`](../src/lib/global/auth/demo-credentials.ts) and [`docs/local-development.md`](local-development.md)).
 
 ---
 

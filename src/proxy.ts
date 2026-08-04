@@ -9,6 +9,7 @@ import {
   isCapturePath,
   isDeskPath,
   isPublicApiOnboardingPath,
+  isProtectedApiPath,
 } from "@/lib/global/shared/routes";
 import { sanitizeCallbackUrl } from "@/lib/global/shared/sanitize-callback-url";
 
@@ -16,9 +17,13 @@ function isProtectedAppPath(pathname: string): boolean {
   return isDeskPath(pathname) || isCapturePath(pathname);
 }
 
+function shouldAttachRequestId(pathname: string): boolean {
+  return pathname.startsWith("/api/") || pathname.startsWith("/v1/");
+}
+
 function forwardWithRequestId(request: Request): NextResponse {
   const pathname = new URL(request.url).pathname;
-  if (!pathname.startsWith("/api/")) {
+  if (!shouldAttachRequestId(pathname)) {
     return NextResponse.next();
   }
   const requestHeaders = new Headers(request.headers);
@@ -53,14 +58,7 @@ export default auth((request) => {
     return NextResponse.redirect(new URL(callbackUrl, request.nextUrl));
   }
 
-  if (
-    !hasValidSession &&
-    (pathname.startsWith("/api/onboarding") ||
-      pathname.startsWith("/api/catalog") ||
-      pathname.startsWith("/api/customers") ||
-      pathname.startsWith("/api/inventory") ||
-      pathname.startsWith("/api/payments"))
-  ) {
+  if (!hasValidSession && isProtectedApiPath(pathname)) {
     if (isPublicApiOnboardingPath(pathname)) {
       return forwardWithRequestId(request);
     }

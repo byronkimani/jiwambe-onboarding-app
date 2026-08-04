@@ -5,6 +5,7 @@ import {
   parseUpstreamJson,
   upstreamOfficerLogin,
 } from "@/lib/global/auth/officer-auth-upstream";
+import { MockUpstreamUnavailableError } from "@/lib/global/shared/upstream-request";
 
 const loginSchema = z.object({
   email: z.string().min(1),
@@ -24,11 +25,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid_credentials" }, { status: 401 });
   }
 
-  const response = await upstreamOfficerLogin(
-    parsed.data.email,
-    parsed.data.password,
-    request,
-  );
+  let response: Response;
+  try {
+    response = await upstreamOfficerLogin(
+      parsed.data.email,
+      parsed.data.password,
+      request,
+    );
+  } catch (error) {
+    if (error instanceof MockUpstreamUnavailableError) {
+      return NextResponse.json(
+        {
+          error: "mock_upstream_unavailable",
+          message: error.message,
+        },
+        { status: 503 },
+      );
+    }
+    throw error;
+  }
 
   const data = await parseUpstreamJson<{
     otp_session_id?: string;

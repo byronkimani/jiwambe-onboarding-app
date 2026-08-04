@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { AppRoutes, captureStage } from "../src/lib/global/shared/routes";
+import { AppRoutes, captureStage, FieldRoutes } from "../src/lib/global/shared/routes";
 import { signInAsOnboardingAgent } from "./helpers/sign-in";
 import {
   completeReadiness,
@@ -19,13 +19,13 @@ test.describe("capture journey", () => {
   test("catalog and STK on product stage", async ({ page }) => {
     await signInAsOnboardingAgent(page);
     const ref = await runCaptureToProductStage(page);
-    const stk = await page.request.post(AppRoutes.apiPaymentsStk, {
+    const stk = await page.request.post(FieldRoutes.paymentsStk, {
       data: { applicationReferenceCode: ref, depositKes: 10_000 },
     });
     expect(stk.ok()).toBeTruthy();
     const stkBody = (await stk.json()) as { checkoutId: string };
     const pending = await page.request.post(
-      AppRoutes.apiPaymentsValidate,
+      FieldRoutes.paymentsValidate,
       {
         data: {
           applicationReferenceCode: ref,
@@ -35,7 +35,7 @@ test.describe("capture journey", () => {
     );
     expect((await pending.json()).status).toBe("pending");
     const verified = await page.request.post(
-      AppRoutes.apiPaymentsValidate,
+      FieldRoutes.paymentsValidate,
       {
         data: {
           applicationReferenceCode: ref,
@@ -86,12 +86,12 @@ test.describe("capture journey", () => {
 
   test("catalog inventory deposits APIs require auth", async ({ request }) => {
     for (const path of [
-      AppRoutes.apiCatalogProducts,
-      AppRoutes.apiInventory,
-      AppRoutes.apiPaymentsStk,
+      FieldRoutes.products,
+      FieldRoutes.bikesAssignable,
+      FieldRoutes.paymentsStk,
     ]) {
       const response = await request.get(path);
-      if (path === AppRoutes.apiPaymentsStk) {
+      if (path === FieldRoutes.paymentsStk) {
         const post = await request.post(path, {
           data: { applicationReferenceCode: "A-1", depositKes: 1000 },
         });
@@ -100,7 +100,7 @@ test.describe("capture journey", () => {
         expect(response.status()).toBe(401);
       }
     }
-    const validate = await request.post(AppRoutes.apiPaymentsValidate, {
+    const validate = await request.post(FieldRoutes.paymentsValidate, {
       data: { applicationReferenceCode: "A-1", mpesaReceipt: "UGE2ETEST01" },
     });
     expect(validate.status()).toBe(401);

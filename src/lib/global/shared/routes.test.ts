@@ -4,6 +4,8 @@ import {
   captureStage,
   deskApplication,
   deskApplicationAgreement,
+  FieldRoutes,
+  fieldApplication,
   isCapturePath,
   isCaptureStageKey,
   isDeskPath,
@@ -45,20 +47,19 @@ describe("routes", () => {
     expect(isCaptureStageKey("invalid")).toBe(false);
   });
 
-  it("keeps protected onboarding APIs private", () => {
-    expect(isPublicApiOnboardingPath(AppRoutes.apiOnboardingApplications)).toBe(
-      false,
-    );
-    expect(isProtectedApiPath(AppRoutes.apiCatalogQuotes)).toBe(true);
-    expect(isProtectedApiPath(AppRoutes.apiCustomersSearch)).toBe(true);
-    expect(isProtectedApiPath(AppRoutes.apiPaymentsStk)).toBe(true);
+  it("keeps field realm APIs private and auth public", () => {
+    expect(isPublicApiOnboardingPath(FieldRoutes.applications)).toBe(false);
+    expect(isProtectedApiPath(FieldRoutes.productsQuote)).toBe(true);
+    expect(isProtectedApiPath(FieldRoutes.customersSearch)).toBe(true);
+    expect(isProtectedApiPath(FieldRoutes.paymentsStk)).toBe(true);
+    expect(isProtectedApiPath(fieldApplication("app-1"))).toBe(true);
     expect(isPublicApiOnboardingPath(AppRoutes.apiOnboardingAuthLogin)).toBe(
       true,
     );
     expect(isPublicApiOnboardingPath(AppRoutes.apiOnboardingAuthOtpResend)).toBe(
       true,
     );
-    expect(isPublicApiOnboardingPath(AppRoutes.apiOnboardingLogout)).toBe(false);
+    expect(isPublicApiOnboardingPath(FieldRoutes.authLogout)).toBe(false);
     expect(
       isPublicApiOnboardingPath(AppRoutes.apiOnboardingAuthPasswordForgot),
     ).toBe(true);

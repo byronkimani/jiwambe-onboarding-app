@@ -6,7 +6,7 @@ import type { OnboardingApplicationResource } from "@/lib/onboarding/application
 import { mapResourceToDeskCard } from "@/lib/onboarding/map-resource-to-desk-card";
 import type { OnboardingApplication } from "@/lib/onboarding/types";
 import { parseApplicationResource } from "@/lib/onboarding/schemas/parse-onboarding-json";
-import { apiOnboardingApplication } from "@/lib/global/shared/routes";
+import { fieldApplication } from "@/lib/global/shared/routes";
 
 export function useApplication(id: string) {
   const [application, setApplication] = useState<OnboardingApplication | null>(
@@ -22,7 +22,7 @@ export function useApplication(id: string) {
     let cancelled = false;
     async function load() {
       setLoading(true);
-      const response = await bffFetch(apiOnboardingApplication(id));
+      const response = await bffFetch(fieldApplication(id));
       if (!response.ok) {
         if (!cancelled) {
           setError("not_found");

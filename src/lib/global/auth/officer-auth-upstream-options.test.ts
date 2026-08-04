@@ -5,24 +5,24 @@ import { officerAuthUpstreamOptions } from "@/lib/global/auth/officer-auth-upstr
 describe("officerAuthUpstreamOptions", () => {
   it("returns requestId from incoming request", () => {
     const request = new Request("http://localhost/api/onboarding/auth/login", {
-      headers: { [REQUEST_ID_HEADER]: "req-auth-1" },
+      headers: { [REQUEST_ID_HEADER]: "req-auth-12345" },
     });
 
     expect(officerAuthUpstreamOptions(request)).toEqual({
-      requestId: "req-auth-1",
+      requestId: "req-auth-12345",
     });
   });
 
   it("merges accessToken with requestId", () => {
     const request = new Request("http://localhost/api/onboarding/auth/password/change", {
-      headers: { [REQUEST_ID_HEADER]: "req-auth-2" },
+      headers: { [REQUEST_ID_HEADER]: "req-auth-23456" },
     });
 
     expect(
       officerAuthUpstreamOptions(request, { accessToken: "token-1" }),
     ).toEqual({
       accessToken: "token-1",
-      requestId: "req-auth-2",
+      requestId: "req-auth-23456",
     });
   });
 });

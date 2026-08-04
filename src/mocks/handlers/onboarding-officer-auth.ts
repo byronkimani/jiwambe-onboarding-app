@@ -4,7 +4,7 @@ import {
 } from "@/lib/global/auth/demo-credentials";
 import { normalizeEmail } from "@/lib/global/auth/normalize-email";
 import { OFFICER_AUTH_UPSTREAM } from "@/lib/global/auth/officer-auth-paths";
-import { upstreamPath } from "@/mocks/handlers/upstream-path";
+import { demoAuthUpstreamPath, fieldUpstreamPath } from "@/mocks/handlers/upstream-path";
 import {
   getOfficerAuthMockState,
   resetOfficerAuthMockState,
@@ -23,11 +23,18 @@ function parseJson<T>(body: unknown): T | null {
 }
 
 function authPath(segment: keyof typeof OFFICER_AUTH_UPSTREAM): string {
-  return upstreamPath(OFFICER_AUTH_UPSTREAM[segment]);
+  const path = OFFICER_AUTH_UPSTREAM[segment];
+  if (path.startsWith("/v1/_demo/")) {
+    return demoAuthUpstreamPath(path.replace("/v1/_demo/auth", ""));
+  }
+  if (path.startsWith("/v1/field/auth/")) {
+    return fieldUpstreamPath(path.replace("/v1/field", ""));
+  }
+  return `*${path}`;
 }
 
 export const onboardingOfficerAuthHandlers = [
-  http.get(upstreamPath("/onboarding/agents/profile"), ({ request }) => {
+  http.get(fieldUpstreamPath("/auth/me"), ({ request }) => {
     const profile = officerProfileFromBearerToken(
       request.headers.get("Authorization"),
     );

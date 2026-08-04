@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AppRoutes } from "@/lib/global/shared/routes";
+import { AppRoutes, FieldRoutes } from "@/lib/global/shared/routes";
 import {
   BffSessionExpiredError,
   bffFetch,
@@ -50,7 +50,7 @@ describe("bffFetch", () => {
   it("returns response on success for protected routes", async () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
 
-    const response = await bffFetch(AppRoutes.apiOnboardingAgentsProfile);
+    const response = await bffFetch(FieldRoutes.authMe);
 
     expect(response.status).toBe(200);
     expect(signOutMock).not.toHaveBeenCalled();
@@ -76,7 +76,7 @@ describe("bffFetch", () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 401 }));
     signOutMock.mockResolvedValue(undefined);
 
-    await expect(bffFetch(AppRoutes.apiCatalogProducts)).rejects.toBeInstanceOf(
+    await expect(bffFetch(FieldRoutes.products)).rejects.toBeInstanceOf(
       BffSessionExpiredError,
     );
 
@@ -87,7 +87,7 @@ describe("bffFetch", () => {
   it("passes through non-401 errors on protected routes", async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 404 }));
 
-    const response = await bffFetch(AppRoutes.apiInventory);
+    const response = await bffFetch(FieldRoutes.bikesAssignable);
 
     expect(response.status).toBe(404);
     expect(signOutMock).not.toHaveBeenCalled();
@@ -107,12 +107,12 @@ describe("bffFetch", () => {
   it("reports 5xx BFF responses to Sentry", async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 503 }));
 
-    const response = await bffFetch(AppRoutes.apiCatalogProducts);
+    const response = await bffFetch(FieldRoutes.products);
 
     expect(response.status).toBe(503);
     expect(withScopeMock).toHaveBeenCalled();
     expect(captureMessageMock).toHaveBeenCalledWith(
-      `BFF 503: ${AppRoutes.apiCatalogProducts}`,
+      `BFF 503: ${FieldRoutes.products}`,
     );
   });
 });

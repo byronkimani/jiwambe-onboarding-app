@@ -3,8 +3,8 @@ import {
   isMockJiwambeApiEnabled,
 } from "@/lib/global/shared/env";
 import {
-  createRequestId,
   REQUEST_ID_HEADER,
+  sanitizeRequestId,
 } from "@/lib/global/observability/request-id";
 import { isExpectedUpstreamClientError } from "@/lib/global/observability/upstream-log-level";
 import {
@@ -12,6 +12,7 @@ import {
   logInfo,
   logWarn,
 } from "@/lib/global/observability/structured-logger";
+import { ensureJiwambeMsw } from "@/mocks/jiwambe-msw-server";
 
 export type UpstreamRequestOptions = {
   accessToken?: string;
@@ -20,16 +21,32 @@ export type UpstreamRequestOptions = {
 
 const SLOW_UPSTREAM_MS = 3000;
 
-async function ensureMockUpstreamWhenEnabled(): Promise<void> {
-  if (!isMockJiwambeApiEnabled()) {
-    return;
+export class MockUpstreamUnavailableError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = "MockUpstreamUnavailableError";
   }
-  const { ensureJiwambeMsw } = await import("@/mocks/jiwambe-msw-server");
-  ensureJiwambeMsw();
+}
+
+function isConnectionRefused(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  const cause = error.cause;
+  if (
+    cause &&
+    typeof cause === "object" &&
+    "code" in cause &&
+    cause.code === "ECONNREFUSED"
+  ) {
+    return true;
+  }
+  return error.message.includes("ECONNREFUSED");
 }
 
 function logUpstreamCall(options: {
   requestId: string;
+  upstreamRequestId?: string;
   upstreamPath: string;
   method: string;
   status: number;
@@ -43,6 +60,10 @@ function logUpstreamCall(options: {
     method: options.method,
     status: options.status,
     durationMs: options.durationMs,
+    ...(options.upstreamRequestId &&
+    options.upstreamRequestId !== options.requestId
+      ? { upstreamRequestId: options.upstreamRequestId }
+      : {}),
     ...(options.error ? { error: options.error } : {}),
   };
 
@@ -74,12 +95,15 @@ export async function upstreamRequest(
   init?: RequestInit,
   options?: UpstreamRequestOptions,
 ): Promise<Response> {
-  await ensureMockUpstreamWhenEnabled();
+  if (isMockJiwambeApiEnabled()) {
+    await ensureJiwambeMsw();
+  }
+
   const base = getJiwambeApiBaseUrl();
   const upstreamPath = path.startsWith("/") ? path : `/${path}`;
   const url = `${base}${upstreamPath}`;
   const method = init?.method ?? "GET";
-  const requestId = options?.requestId ?? createRequestId();
+  const requestId = sanitizeRequestId(options?.requestId);
 
   const headers = new Headers(init?.headers);
   if (!headers.has("Content-Type")) {
@@ -96,8 +120,11 @@ export async function upstreamRequest(
       ...init,
       headers,
     });
+    const upstreamRequestId =
+      response.headers.get(REQUEST_ID_HEADER)?.trim() || undefined;
     logUpstreamCall({
       requestId,
+      upstreamRequestId,
       upstreamPath,
       method,
       status: response.status,
@@ -113,6 +140,14 @@ export async function upstreamRequest(
       durationMs: Date.now() - startedAt,
       error: error instanceof Error ? error.message : "upstream_fetch_failed",
     });
+
+    if (isMockJiwambeApiEnabled() && isConnectionRefused(error)) {
+      throw new MockUpstreamUnavailableError(
+        "Mock upstream is not reachable. Restart `pnpm dev` or run `pnpm dev:reset-mocks`. See docs/local-development.md.",
+        { cause: error },
+      );
+    }
+
     throw error;
   }
 }
