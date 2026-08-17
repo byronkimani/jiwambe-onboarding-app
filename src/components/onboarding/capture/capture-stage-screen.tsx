@@ -11,6 +11,7 @@ import {
 } from "@/lib/onboarding/capture/nav";
 import { useCaptureWizard } from "@/components/onboarding/capture/capture-wizard-context";
 import { CaptureApplicationResume } from "@/components/onboarding/capture/capture-application-resume";
+import { CaptureStageActions } from "@/components/onboarding/capture/capture-stage-actions";
 import { CaptureChromeLayout } from "@/components/onboarding/capture/capture-chrome-layout";
 import { StageShell } from "@/components/onboarding/capture/stage-shell";
 import { CaptureStageBody } from "@/components/onboarding/capture/stages/capture-stage-body";
@@ -77,6 +78,8 @@ export function CaptureStageScreen({ stage }: Props) {
     Boolean(referenceCode) &&
     !patching &&
     !uploadBlocked;
+  const showTopStageActions =
+    stage !== "readiness" && stage !== "lookup" && Boolean(referenceCode);
 
   const readyToSubmit =
     Boolean(referenceCode) && !patching && isFormReadyForSubmit(form);
@@ -229,6 +232,13 @@ export function CaptureStageScreen({ stage }: Props) {
         customerName={form.name || undefined}
         onBack={goBack}
       >
+        {showTopStageActions ? (
+          <CaptureStageActions
+            onPause={canPause ? () => setPauseModalOpen(true) : undefined}
+            pauseDisabled={patching}
+            onDisqualify={() => setDisqualifyModalOpen(true)}
+          />
+        ) : null}
         <StageShell
           title={title}
           sub={sub}
@@ -298,6 +308,7 @@ export function CaptureStageScreen({ stage }: Props) {
         title="Disqualify application"
         hint="This closes the application. Use when the customer cannot proceed or policy blocks onboarding."
         confirmLabel="Disqualify"
+        tone="danger"
         onConfirm={(reason) => void confirmDisqualify(reason)}
         onCancel={() => setDisqualifyModalOpen(false)}
       />

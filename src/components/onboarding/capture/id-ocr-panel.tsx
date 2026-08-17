@@ -1,5 +1,7 @@
 "use client";
 
+/* OCR demo UI disabled — restore when ID extraction is wired to a real service.
+
 import { useState } from "react";
 
 type Props = {
@@ -46,4 +48,14 @@ export function IdOcrPanel({ onApplied }: Props) {
       )}
     </div>
   );
+}
+*/
+
+type Props = {
+  onApplied: (fields: { name: string; idNo: string }) => void;
+};
+
+export function IdOcrPanel(props: Props) {
+  void props;
+  return null;
 }

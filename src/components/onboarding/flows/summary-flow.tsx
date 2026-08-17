@@ -5,6 +5,7 @@ import type { OnboardingApplication } from "@/lib/onboarding/types";
 import { formatKes } from "@/lib/onboarding/display/format-kes";
 import { LifelineStrip } from "@/components/onboarding/desk/lifeline-strip";
 import { OnboardingTopBar } from "@/components/onboarding/chrome/top-bar";
+import { SectionCard } from "@/components/onboarding/atoms/section-card";
 import { ProtoBtn } from "@/components/onboarding/atoms/proto-field";
 import { AppRoutes } from "@/lib/global/shared/routes";
 
@@ -16,10 +17,7 @@ function SummarySection({
   rows: [string, string][];
 }) {
   return (
-    <div className="mb-3 rounded-2xl border border-line bg-card p-[18px]">
-      <p className="mb-2.5 text-[11.5px] font-extrabold uppercase tracking-wide text-ink-faint">
-        {title}
-      </p>
+    <SectionCard title={title}>
       <div className="grid grid-cols-2 gap-3">
         {rows
           .filter(([, v]) => v)
@@ -30,7 +28,7 @@ function SummarySection({
             </div>
           ))}
       </div>
-    </div>
+    </SectionCard>
   );
 }
 

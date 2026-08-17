@@ -340,6 +340,10 @@ export const customerLookupMatchSchema = z.object({
   displayName: z.string().min(1),
   phoneMasked: z.string().min(1),
   nationalIdMasked: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  nationalId: z.string().nullable().optional(),
+  portalStartedLabel: z.string().nullable().optional(),
+  county: z.string().nullable().optional(),
 });
 
 export const customerLookupResponseSchema = z.object({

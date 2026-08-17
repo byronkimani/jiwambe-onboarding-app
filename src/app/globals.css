@@ -124,8 +124,34 @@ body {
   animation: fade-up 0.38s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
+.jw-tap {
+  transition:
+    transform 0.12s ease,
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+
 .jw-tap:active {
   transform: scale(0.98);
+}
+
+.text-red {
+  color: var(--red);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 999px;
 }
 
 .jw-focus:focus {

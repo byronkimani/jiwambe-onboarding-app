@@ -29,7 +29,7 @@ function phoneError(phone: string): string | null {
 
 function emailError(email: string): string | null {
   const trimmed = email.trim();
-  if (!trimmed) return null;
+  if (!trimmed) return "Email is required.";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
     return "Enter a valid email address.";
   }
@@ -158,6 +158,13 @@ export function validateCaptureStage(
       const mailErr = emailError(form.email);
       if (mailErr) fieldErrors.email = mailErr;
       if (!form.county.trim()) fieldErrors.county = "County is required.";
+      if (!form.subCounty.trim()) {
+        fieldErrors.subCounty = "Sub-county is required.";
+      }
+      if (!form.area.trim()) fieldErrors.area = "Area is required.";
+      if (!form.landmark.trim()) {
+        fieldErrors.landmark = "Nearest landmark is required.";
+      }
       Object.assign(fieldErrors, documentValidationErrorsForStage(stage, form));
       break;
     }
@@ -202,6 +209,10 @@ export function validateCaptureStage(
         const refNidErr = nationalIdFormatErrorMessage(ref.nationalId);
         if (refNidErr) {
           fieldErrors[`references.${index}.nationalId`] = refNidErr;
+        }
+        if (!ref.called) {
+          fieldErrors[`references.${index}.called`] =
+            "Confirm you called this reference during the session.";
         }
       });
       break;

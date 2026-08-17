@@ -1,8 +1,14 @@
 "use client";
 
 import { useRef, useState } from "react";
+// import { QualityBadge } from "@/components/onboarding/atoms/quality-badge";
 import { ProtoTag } from "@/components/onboarding/atoms/proto-tag";
 import { CaptureInlineError } from "@/components/onboarding/capture/capture-inline-error";
+// Image quality demo UI disabled — see image-quality.ts + quality-badge.tsx
+// import {
+//   analyzeImage,
+//   type ImageQualityState,
+// } from "@/lib/onboarding/capture/image-quality";
 
 type PhotoSlotProps = {
   label: string;
@@ -33,6 +39,18 @@ export function PhotoSlot({
 }: PhotoSlotProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [zoom, setZoom] = useState(false);
+  // const [quality, setQuality] = useState<ImageQualityState>(null);
+
+  // useEffect(() => {
+  //   if (!image) return;
+  //   let active = true;
+  //   void analyzeImage(image).then((result) => {
+  //     if (active) setQuality(result ?? null);
+  //   });
+  //   return () => {
+  //     active = false;
+  //   };
+  // }, [image]);
 
   function pick() {
     inputRef.current?.click();
@@ -42,6 +60,9 @@ export function PhotoSlot({
     const file = event.target.files?.[0];
     if (!file) return;
     onCapture(file);
+    // const previewUrl = URL.createObjectURL(file);
+    // setQuality("checking");
+    // void analyzeImage(previewUrl).then(setQuality);
     event.target.value = "";
   }
 
@@ -77,7 +98,10 @@ export function PhotoSlot({
               className="h-[120px] w-full cursor-zoom-in rounded-[10px] border border-line bg-white object-cover"
             />
           </button>
-          <div className="mt-2 flex flex-wrap items-center justify-end gap-3">
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+            {/* Image quality demo UI disabled — see quality-badge.tsx
+            <QualityBadge quality={quality} />
+            */}
             {uploadError && onRetry ? (
               <button
                 type="button"
@@ -93,6 +117,7 @@ export function PhotoSlot({
               className="text-xs font-bold text-ink-soft underline"
               disabled={uploading}
               onClick={() => {
+                // setQuality(null);
                 onRetake();
               }}
             >

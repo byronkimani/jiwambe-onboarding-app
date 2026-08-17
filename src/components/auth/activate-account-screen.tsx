@@ -3,14 +3,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AuthScreenLayout } from "@/components/auth/auth-screen-layout";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  ProtoBtn,
+  ProtoField,
+  ProtoInput,
+} from "@/components/onboarding/atoms/proto-field";
 import {
   ONBOARDING_SUPPORT_EMAIL,
   ONBOARDING_SUPPORT_PHONE,
 } from "@/lib/global/auth/support-contact";
-import { validateNewPassword } from "@/lib/global/auth/validate-password";
+import {
+  PASSWORD_MIN_LENGTH,
+  validateNewPassword,
+} from "@/lib/global/auth/validate-password";
 import { AppRoutes } from "@/lib/global/shared/routes";
 
 type ActivateState =
@@ -121,6 +126,11 @@ export function ActivateAccountScreen() {
     router.push(`${AppRoutes.home}?passwordSet=1`);
   }
 
+  const passwordValid =
+    password.length >= PASSWORD_MIN_LENGTH &&
+    passwordConfirm.length >= PASSWORD_MIN_LENGTH &&
+    password === passwordConfirm;
+
   return (
     <AuthScreenLayout>
       {activateState.status === "loading" ? (
@@ -140,50 +150,42 @@ export function ActivateAccountScreen() {
       ) : null}
 
       {activateState.status === "ready" ? (
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate>
           <h1 className="font-display text-[22px] text-ink">Set your password</h1>
           <p className="text-[13.5px] leading-relaxed text-ink-soft">
             Account <b>{activateState.emailMasked}</b>. Choose a password you will
             use with email sign-in and SMS verification.
           </p>
-          <div>
-            <Label htmlFor="new-password" className="text-ink-soft">
-              New password
-            </Label>
-            <Input
+          <ProtoField label="New password" required id="new-password" className="mt-4">
+            <ProtoInput
               id="new-password"
               type="password"
               autoComplete="new-password"
-              className="mt-2 border-line bg-white"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
-          </div>
-          <div>
-            <Label htmlFor="confirm-password" className="text-ink-soft">
-              Confirm password
-            </Label>
-            <Input
+          </ProtoField>
+          <ProtoField label="Confirm password" required id="confirm-password">
+            <ProtoInput
               id="confirm-password"
               type="password"
               autoComplete="new-password"
-              className="mt-2 border-line bg-white"
               value={passwordConfirm}
               onChange={(e) => setPasswordConfirm(e.target.value)}
             />
-          </div>
+          </ProtoField>
           {formError ? (
-            <p className="text-[13px] font-semibold text-red-600" role="alert">
+            <p className="text-[13px] font-semibold text-red" role="alert">
               {formError}
             </p>
           ) : null}
-          <Button
+          <ProtoBtn
             type="submit"
-            className="h-auto w-full rounded-xl py-3.5 font-bold"
-            disabled={submitting}
+            className="w-full"
+            disabled={!passwordValid || submitting}
           >
             {submitting ? "Saving…" : "Save password"}
-          </Button>
+          </ProtoBtn>
         </form>
       ) : null}
     </AuthScreenLayout>

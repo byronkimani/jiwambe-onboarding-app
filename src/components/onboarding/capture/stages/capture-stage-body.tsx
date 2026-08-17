@@ -33,10 +33,18 @@ import type { CustomerLookupMatch } from "@/lib/onboarding/application-resource"
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CAPTURE_DOCUMENT_FORM_KEYS } from "@/lib/onboarding/capture/capture-form-documents";
-import { IdOcrPanel } from "@/components/onboarding/capture/id-ocr-panel";
-import { FaceMatchPanel } from "@/components/onboarding/capture/face-match-panel";
-import { ProtoBtn, ProtoField, ProtoInput } from "@/components/onboarding/atoms/proto-field";
-import { Button } from "@/components/ui/button";
+// import { IdOcrPanel } from "@/components/onboarding/capture/id-ocr-panel";
+// import { FaceMatchPanel } from "@/components/onboarding/capture/face-match-panel";
+import { ProtoBtn, ProtoField, ProtoInput, ProtoSelect } from "@/components/onboarding/atoms/proto-field";
+import { ProtoChoiceRow } from "@/components/onboarding/atoms/proto-choice-row";
+import { ProtoCheckbox } from "@/components/onboarding/atoms/proto-checkbox";
+import { SectionCard } from "@/components/onboarding/atoms/section-card";
+import { ProtoTag } from "@/components/onboarding/atoms/proto-tag";
+import { captureStagePath } from "@/lib/onboarding/capture/nav";
+import {
+  KENYA_COUNTIES,
+  KENYA_COUNTY_NAMES,
+} from "@/lib/onboarding/capture/kenya-counties";
 
 export type CaptureStageBodyProps = {
   stage: CaptureStageKey;
@@ -58,6 +66,7 @@ export function CaptureStageBody({
     retryDocumentUpload,
     clearDocumentSlot,
     pauseApplication,
+    patchApplicationForStage,
     patching,
   } = useCaptureWizard();
   const router = useRouter();
@@ -83,6 +92,9 @@ export function CaptureStageBody({
   const [lookupQuery, setLookupQuery] = useState("");
   const [lookupMessage, setLookupMessage] = useState<string | null>(null);
   const [lookupMatches, setLookupMatches] = useState<CustomerLookupMatch[]>([]);
+  const [lookupResult, setLookupResult] = useState<"found" | "none" | null>(
+    null,
+  );
 
   useEffect(() => {
     if (stage !== "product") return;
@@ -138,9 +150,12 @@ export function CaptureStageBody({
   }
 
   if (stage === "lookup") {
+    const primaryMatch = lookupMatches[0] ?? null;
+
     async function runLookupSearch() {
       setLookupMessage(null);
       setLookupMatches([]);
+      setLookupResult(null);
       const digits = normalizeNationalIdDigits(lookupQuery);
       const phoneParsed = parseKenyaPhoneForSubmit(lookupQuery);
       const body =
@@ -160,69 +175,120 @@ export function CaptureStageBody({
       }
       setLookupMatches(result.matches);
       if (result.matches.length === 0) {
-        setLookupMessage("No portal matches — use new customer below.");
+        setLookupResult("none");
       } else {
-        setLookupMessage(`${result.matches.length} match(es) found.`);
+        setLookupResult("found");
       }
     }
 
+    async function continueWithApplicant(match: CustomerLookupMatch) {
+      patchForm({
+        customerFound: "portal",
+        name: match.displayName,
+        phone: match.phone ?? match.phoneMasked,
+        idNo: match.nationalId ?? match.nationalIdMasked ?? "",
+        county: match.county ?? form.county,
+        selectedLeadId: match.leadId,
+        selectedLeadSource: match.source,
+      });
+      if (referenceCode) {
+        const saved = await patchApplicationForStage("lookup");
+        if (!saved.ok) {
+          toast.error("Could not save lookup selection.");
+          return;
+        }
+      }
+      router.push(captureStagePath("identity", referenceCode ?? undefined));
+    }
+
+    async function startFreshApplication() {
+      patchForm({
+        customerFound: "new",
+        selectedLeadId: null,
+        selectedLeadSource: "WALK_IN",
+      });
+      if (referenceCode) {
+        const saved = await patchApplicationForStage("lookup");
+        if (!saved.ok) {
+          toast.error("Could not save new customer selection.");
+          return;
+        }
+      }
+      router.push(captureStagePath("identity", referenceCode ?? undefined));
+    }
+
     return (
-      <div className="mt-4 space-y-4">
+      <div className="mt-4">
         <ProtoField label="Phone number or National ID">
-          <ProtoInput
-            placeholder="Search phone or National ID"
-            value={lookupQuery}
-            onChange={(e) => setLookupQuery(e.target.value)}
-          />
+          <div className="flex gap-2.5">
+            <ProtoInput
+              className="flex-1"
+              placeholder="07XX XXX XXX or ID number"
+              value={lookupQuery}
+              onChange={(e) => setLookupQuery(e.target.value)}
+            />
+            <ProtoBtn
+              className="w-[120px] shrink-0"
+              onClick={() => void runLookupSearch()}
+            >
+              Search
+            </ProtoBtn>
+          </div>
         </ProtoField>
-        <ProtoBtn ghost small onClick={() => void runLookupSearch()}>
-          Search portal
-        </ProtoBtn>
         {lookupMessage ? (
-          <p className="text-sm text-ink-soft">{lookupMessage}</p>
+          <p className="mb-2 text-sm text-ink-soft">{lookupMessage}</p>
         ) : null}
-        {lookupMatches.map((match) => (
-          <button
-            key={match.leadId}
-            type="button"
-            className={`jw-tap w-full rounded-2xl border p-4 text-left ${
-              form.selectedLeadId === match.leadId
-                ? "border-accent bg-accent/5"
-                : "border-line bg-card"
-            }`}
-            onClick={() =>
-              patchForm({
-                customerFound: "portal",
-                name: match.displayName,
-                selectedLeadId: match.leadId,
-                selectedLeadSource: match.source,
-              })
-            }
+        {lookupResult === "found" && primaryMatch ? (
+          <div className="animate-fade-up mt-2 rounded-[14px] border-[1.5px] border-blue/20 bg-blue-bg p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[15px] font-bold text-ink">
+                  {primaryMatch.displayName}
+                </p>
+                <p className="mt-0.5 text-[12.5px] text-ink-soft">
+                  Started application on self-service portal
+                  {primaryMatch.portalStartedLabel
+                    ? ` · ${primaryMatch.portalStartedLabel}`
+                    : ""}
+                </p>
+                <p className="mt-1 text-[12.5px] font-semibold text-ink">
+                  {primaryMatch.phone ?? primaryMatch.phoneMasked}
+                  {primaryMatch.nationalId || primaryMatch.nationalIdMasked
+                    ? ` · ID ${primaryMatch.nationalId ?? primaryMatch.nationalIdMasked}`
+                    : ""}
+                </p>
+              </div>
+              <ProtoTag tone="info">Portal draft</ProtoTag>
+            </div>
+            <p className="mt-3 rounded-[10px] bg-white px-3 py-2.5 text-[12.5px] font-semibold leading-relaxed text-blue">
+              ⚠️ Confirm every field against their ID and DL in person — treat
+              portal data as unverified until you check it.
+            </p>
+            <ProtoBtn
+              small
+              className="mt-3"
+              disabled={patching}
+              onClick={() => void continueWithApplicant(primaryMatch)}
+            >
+              Continue with this applicant →
+            </ProtoBtn>
+          </div>
+        ) : null}
+        {lookupResult === "none" ? (
+          <div className="animate-fade-up mt-2 rounded-[14px] bg-slate-bg p-4 text-[13.5px] text-ink-soft">
+            No existing record found. Start a fresh application below.
+          </div>
+        ) : null}
+        <div className="mt-6 border-t border-line pt-5">
+          <ProtoBtn
+            ghost
+            className="w-full"
+            disabled={patching}
+            onClick={() => void startFreshApplication()}
           >
-            <p className="font-bold text-ink">{match.displayName}</p>
-            <p className="text-sm text-ink-soft">{match.phoneMasked}</p>
-            {match.nationalIdMasked ? (
-              <p className="text-xs text-ink-faint">{match.nationalIdMasked}</p>
-            ) : null}
-          </button>
-        ))}
-        <ProtoBtn
-          ghost
-          onClick={() =>
-            patchForm({
-              customerFound: "new",
-              selectedLeadId: null,
-              selectedLeadSource: "WALK_IN",
-            })
-          }
-        >
-          New customer (no portal record)
-        </ProtoBtn>
-        {form.customerFound ? (
-          <p className="text-sm font-bold text-accent-deep">
-            Selected: {form.customerFound === "portal" ? form.name : "New"}
-          </p>
-        ) : null}
+            + Start a new application from scratch
+          </ProtoBtn>
+        </div>
         <CaptureInlineError
           show={showValidation}
           message={fieldErrors.customerFound}
@@ -242,133 +308,208 @@ export function CaptureStageBody({
   }
 
   if (stage === "identity") {
+    const subCountyOptions = (KENYA_COUNTIES[form.county] ?? []).map((name) => ({
+      value: name,
+      label: name,
+    }));
+
     return (
-      <div className="mt-4 grid gap-3 md:grid-cols-2">
-        <ProtoField label="Full name" required>
-          <ValidatedTextInput
-            value={form.name}
-            showValidation={showValidation}
-            validate={(v) => (v.trim() ? null : "Full name is required.")}
-            onChange={(name) => patchForm({ name })}
-          />
-        </ProtoField>
-        <ProtoField label="Phone" required>
-          <KenyaPhoneInput
-            value={form.phone}
-            showValidation={showValidation}
-            onChange={(phone) => patchForm({ phone })}
-          />
-        </ProtoField>
-        <ProtoField label="National ID" required>
-          <ValidatedTextInput
-            value={form.idNo}
-            showValidation={showValidation}
-            validate={(v) => nationalIdFormatErrorMessage(v)}
-            onChange={(idNo) => patchForm({ idNo })}
-          />
-        </ProtoField>
-        <ProtoField label="Gender" required>
-          <select
-            className="jw-focus w-full rounded-[10px] border-[1.5px] border-line bg-card px-3.5 py-3"
-            value={form.gender}
-            onChange={(e) => patchForm({ gender: e.target.value })}
-          >
-            <option value="">Select…</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="other">Other</option>
-          </select>
-          <CaptureInlineError
-            show={showValidation}
-            message={fieldErrors.gender}
-          />
-        </ProtoField>
-        <ProtoField label="Date of birth" required>
-          <ProtoInput
-            type="date"
-            value={form.dateOfBirth}
-            onChange={(e) => patchForm({ dateOfBirth: e.target.value })}
-          />
-          <CaptureInlineError
-            show={showValidation}
-            message={fieldErrors.dateOfBirth}
-          />
-        </ProtoField>
-        <ProtoField label="Email">
-          <ValidatedTextInput
-            value={form.email}
-            showValidation={showValidation}
-            validate={(v) => {
-              if (!v.trim()) return null;
-              return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())
-                ? null
-                : "Enter a valid email address.";
-            }}
-            onChange={(email) => patchForm({ email })}
-          />
-        </ProtoField>
-        <ProtoField label="County" required>
-          <ValidatedTextInput
-            value={form.county}
-            showValidation={showValidation}
-            validate={(v) => (v.trim() ? null : "County is required.")}
-            onChange={(county) => patchForm({ county })}
-          />
-        </ProtoField>
-        <ProtoField label="Sub-county">
-          <ProtoInput
-            value={form.subCounty}
-            onChange={(e) => patchForm({ subCounty: e.target.value })}
-          />
-        </ProtoField>
-        <ProtoField label="Area / estate">
-          <ProtoInput
-            value={form.area}
-            onChange={(e) => patchForm({ area: e.target.value })}
-          />
-        </ProtoField>
-        <ProtoField label="Landmark">
-          <ProtoInput
-            value={form.landmark}
-            onChange={(e) => patchForm({ landmark: e.target.value })}
-          />
-        </ProtoField>
-        <ProtoField label="KRA PIN" required>
-          <ValidatedTextInput
-            value={form.kraPin}
-            showValidation={showValidation}
-            validate={(v) => kraPinFormatErrorMessage(v)}
-            onChange={(kraPin) => patchForm({ kraPin: kraPin.toUpperCase() })}
-          />
-        </ProtoField>
-        {docSlot("id_front", "National ID (front)", {
-          required: true,
-          preferCamera: true,
-        })}
-        {docSlot("id_back", "National ID (back)", {
-          required: true,
-          preferCamera: true,
-        })}
-        {docSlot("kra_certificate", "KRA PIN certificate", { required: true })}
-        {docSlot("selfie", "Client photo", {
-          required: true,
-          preferCamera: true,
-        })}
-        <div className="md:col-span-2">
+      <div className="mt-4">
+        <SectionCard title="Personal details">
+          <ProtoField label="Full name (as on National ID)" required id="identity-name">
+            <ValidatedTextInput
+              id="identity-name"
+              value={form.name}
+              showValidation={showValidation}
+              validate={(v) => (v.trim() ? null : "Full name is required.")}
+              onChange={(name) => patchForm({ name })}
+            />
+          </ProtoField>
+          <div className="grid grid-cols-1 gap-0 md:grid-cols-2 md:gap-x-4">
+            <ProtoField label="Gender" required>
+              <ProtoChoiceRow
+                value={form.gender}
+                onChange={(gender) => patchForm({ gender })}
+                options={[
+                  { value: "male", label: "Male" },
+                  { value: "female", label: "Female" },
+                ]}
+              />
+              <CaptureInlineError
+                show={showValidation}
+                message={fieldErrors.gender}
+              />
+            </ProtoField>
+            <ProtoField label="Date of birth" required>
+              <ProtoInput
+                type="date"
+                value={form.dateOfBirth}
+                onChange={(e) => patchForm({ dateOfBirth: e.target.value })}
+              />
+              <CaptureInlineError
+                show={showValidation}
+                message={fieldErrors.dateOfBirth}
+              />
+            </ProtoField>
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Contact">
+          <div className="grid grid-cols-1 gap-0 md:grid-cols-2 md:gap-x-4">
+            <ProtoField label="Phone number" required hint="STK push target." id="identity-phone">
+              <KenyaPhoneInput
+                id="identity-phone"
+                value={form.phone}
+                showValidation={showValidation}
+                onChange={(phone) => patchForm({ phone })}
+              />
+            </ProtoField>
+            <ProtoField label="Email address" required id="identity-email">
+              <ValidatedTextInput
+                id="identity-email"
+                value={form.email}
+                showValidation={showValidation}
+                validate={(v) => {
+                  if (!v.trim()) return "Email is required.";
+                  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())
+                    ? null
+                    : "Enter a valid email address.";
+                }}
+                onChange={(email) => patchForm({ email })}
+              />
+            </ProtoField>
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Where they live">
+          <div className="grid grid-cols-1 gap-0 md:grid-cols-2 md:gap-x-4">
+            <ProtoField label="County" required id="identity-county">
+              <ProtoSelect
+                id="identity-county"
+                value={form.county}
+                onChange={(county) => patchForm({ county, subCounty: "" })}
+                placeholder="Select county…"
+                options={KENYA_COUNTY_NAMES.map((name) => ({
+                  value: name,
+                  label: name,
+                }))}
+              />
+              <CaptureInlineError
+                show={showValidation}
+                message={fieldErrors.county}
+              />
+            </ProtoField>
+            <ProtoField
+              label="Sub-county"
+              required
+              id="identity-subcounty"
+              hint={!form.county ? "Choose a county first." : undefined}
+            >
+              <ProtoSelect
+                id="identity-subcounty"
+                value={form.subCounty}
+                onChange={(subCounty) => patchForm({ subCounty })}
+                placeholder={form.county ? "Select sub-county…" : "—"}
+                options={subCountyOptions}
+              />
+              <CaptureInlineError
+                show={showValidation}
+                message={fieldErrors.subCounty}
+              />
+            </ProtoField>
+            <ProtoField label="Area" required id="identity-area">
+              <ProtoInput
+                id="identity-area"
+                value={form.area}
+                onChange={(e) => patchForm({ area: e.target.value })}
+              />
+              <CaptureInlineError
+                show={showValidation}
+                message={fieldErrors.area}
+              />
+            </ProtoField>
+            <ProtoField label="Nearest landmark" required id="identity-landmark">
+              <ProtoInput
+                id="identity-landmark"
+                value={form.landmark}
+                onChange={(e) => patchForm({ landmark: e.target.value })}
+              />
+              <CaptureInlineError
+                show={showValidation}
+                message={fieldErrors.landmark}
+              />
+            </ProtoField>
+          </div>
+        </SectionCard>
+
+        <SectionCard
+          title="National ID"
+          hint="Capture both sides. The number below must match the card exactly."
+        >
+          <ProtoField label="National ID number" required id="identity-nid">
+            <ValidatedTextInput
+              id="identity-nid"
+              value={form.idNo}
+              showValidation={showValidation}
+              validate={(v) => nationalIdFormatErrorMessage(v)}
+              onChange={(idNo) => patchForm({ idNo })}
+            />
+          </ProtoField>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {docSlot("id_front", "ID — front", {
+              required: true,
+              preferCamera: true,
+            })}
+            {docSlot("id_back", "ID — back", {
+              required: true,
+              preferCamera: true,
+            })}
+          </div>
+          {/* OCR demo UI disabled — see id-ocr-panel.tsx
           <IdOcrPanel
             onApplied={(fields) =>
               patchForm({ name: fields.name, idNo: fields.idNo })
             }
           />
+          */}
+        </SectionCard>
+
+        <SectionCard
+          title="KRA PIN"
+          hint="Capture the certificate if the customer has it with them or on their phone."
+        >
+          <ProtoField label="KRA PIN" required hint="Format: A012345678Z" id="identity-kra">
+            <ValidatedTextInput
+              id="identity-kra"
+              value={form.kraPin}
+              showValidation={showValidation}
+              validate={(v) => kraPinFormatErrorMessage(v)}
+              onChange={(kraPin) => patchForm({ kraPin: kraPin.toUpperCase() })}
+            />
+          </ProtoField>
+          {docSlot("kra_certificate", "KRA PIN certificate", { required: true })}
+        </SectionCard>
+
+        <SectionCard
+          title="Client photo"
+          hint="One capture — this doubles as the passport photo."
+        >
+          {docSlot("selfie", "Client photo", {
+            required: true,
+            preferCamera: true,
+          })}
+          {/* Face match demo UI disabled — see face-match-panel.tsx
           <FaceMatchPanel />
-        </div>
+          */}
+        </SectionCard>
       </div>
     );
   }
 
   if (stage === "dl") {
     return (
-      <div className="mt-4 space-y-3">
+      <div className="mt-4">
+        <SectionCard title="Driving licence">
         <ProtoField label="Driving licence situation" required>
           <select
             className="jw-focus w-full rounded-[10px] border-[1.5px] border-line bg-card px-3.5 py-3"
@@ -477,13 +618,15 @@ export function CaptureStageBody({
             />
           </div>
         ) : null}
+        </SectionCard>
       </div>
     );
   }
 
   if (stage === "cogc") {
     return (
-      <div className="mt-4 space-y-3">
+      <div className="mt-4">
+        <SectionCard title="Certificate of Good Conduct">
         <ProtoField label="Certificate of Good Conduct" required>
           <select
             className="jw-focus w-full rounded-[10px] border-[1.5px] border-line bg-card px-3.5 py-3"
@@ -535,18 +678,27 @@ export function CaptureStageBody({
             }
           />
         ) : null}
+        </SectionCard>
       </div>
     );
   }
 
   if (stage === "references") {
     return (
-      <div className="mt-4 space-y-4">
+      <div className="mt-4">
         {form.references.map((ref, index) => (
-          <div key={index} className="rounded-2xl border border-line p-4">
-            <p className="text-xs font-bold text-ink-faint">
-              Reference {index + 1}
-            </p>
+          <SectionCard
+            key={index}
+            title={index === 0 ? "Next of kin" : `Reference ${index + 1}`}
+            className={
+              ref.called ? "border-accent bg-accent-soft" : undefined
+            }
+          >
+            {index === 0 ? (
+              <div className="mb-3 flex justify-end">
+                <ProtoTag tone="info">Always next of kin</ProtoTag>
+              </div>
+            ) : null}
             <ProtoInput
               className="mt-2"
               placeholder="Name"
@@ -612,28 +764,27 @@ export function CaptureStageBody({
               show={showValidation}
               message={fieldErrors[`references.${index}.phone`]}
             />
-            <label className="mt-2 flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={ref.called}
-                onChange={(e) => {
-                  const references = [...form.references];
-                  references[index] = { ...ref, called: e.target.checked };
-                  patchForm({ references });
-                }}
-              />
-              Reference called during this session
-            </label>
-          </div>
+            <ProtoCheckbox
+              className="mt-2"
+              checked={ref.called}
+              onChange={(called) => {
+                const references = [...form.references];
+                references[index] = { ...ref, called };
+                patchForm({ references });
+              }}
+              label="Called during this session"
+            />
+            <CaptureInlineError
+              show={showValidation}
+              message={fieldErrors[`references.${index}.called`]}
+            />
+          </SectionCard>
         ))}
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.refConsent}
-            onChange={(e) => patchForm({ refConsent: e.target.checked })}
-          />
-          Customer consents to reference verification calls
-        </label>
+        <ProtoCheckbox
+          checked={form.refConsent}
+          onChange={(refConsent) => patchForm({ refConsent })}
+          label="Customer consents to reference verification calls"
+        />
         <CaptureInlineError
           show={showValidation}
           message={fieldErrors.refConsent}
@@ -657,7 +808,8 @@ export function CaptureStageBody({
   if (stage === "product") {
     const minDeposit = form.quoteMinDepositKes;
     return (
-      <div className="mt-4 space-y-4">
+      <div className="mt-4 space-y-0">
+        <SectionCard title="Product selection">
         {catalogLoading ? (
           <p className="text-sm text-ink-soft">Loading products…</p>
         ) : null}
@@ -688,6 +840,8 @@ export function CaptureStageBody({
           show={showValidation}
           message={fieldErrors.productId}
         />
+        </SectionCard>
+        <SectionCard title="Financing term & deposit">
         <ProtoField label="Financing term" required>
           <div className="grid grid-cols-2 gap-2">
             {[
@@ -742,20 +896,19 @@ export function CaptureStageBody({
             </p>
           ) : null}
         </ProtoField>
+        </SectionCard>
         {form.quoteDailyKes != null ? (
-          <div className="rounded-xl border border-line bg-card-deep p-4">
-            <p className="text-[11px] font-extrabold uppercase tracking-wide text-ink-faint">
-              Financing calculator
-            </p>
-            <p className="mt-2 text-sm font-bold text-accent-deep">
+          <SectionCard title="Financing calculator">
+            <p className="text-sm font-bold text-accent-deep">
               Daily installment: KES {form.quoteDailyKes.toLocaleString()}
             </p>
             <p className="mt-1 text-xs text-ink-soft">
               Based on {form.term} months · {form.opModel || "operating model"}{" "}
               · deposit KES {form.deposit.toLocaleString()} (server quote)
             </p>
-          </div>
+          </SectionCard>
         ) : null}
+        <SectionCard title="Deposit verification">
         <ProductDepositStkPanel
           form={form}
           referenceCode={referenceCode}
@@ -764,13 +917,15 @@ export function CaptureStageBody({
           patchForm={patchForm}
           syncFromResource={syncFromResource}
         />
+        </SectionCard>
       </div>
     );
   }
 
   if (stage === "bike") {
     return (
-      <div className="mt-4 grid gap-2">
+      <div className="mt-4">
+        <SectionCard title="Dealership stock">
         {inventoryLoading ? (
           <p className="text-sm text-ink-soft">Loading dealership stock…</p>
         ) : null}
@@ -806,6 +961,7 @@ export function CaptureStageBody({
           show={showValidation}
           message={fieldErrors.bikeReg}
         />
+        </SectionCard>
       </div>
     );
   }
@@ -815,19 +971,16 @@ export function CaptureStageBody({
     const blocking = reviewBlockingSummary(form);
 
     return (
-      <div className="space-y-4">
-        <div className="rounded-2xl border border-line bg-card p-5 text-sm">
+      <div className="mt-4 space-y-0">
+        <SectionCard title="Application summary">
           <p>
             <strong>{form.name || "Customer"}</strong> ·{" "}
             {form.opModel || "Model TBD"}
           </p>
           <p className="mt-2">Bike: {form.bikeReg ?? "—"}</p>
           <p className="mt-2">Deposit: KES {form.deposit.toLocaleString()}</p>
-        </div>
-        <div className="rounded-2xl border border-line bg-card p-5">
-          <p className="text-xs font-extrabold uppercase tracking-wide text-ink-faint">
-            Stage checklist
-          </p>
+        </SectionCard>
+        <SectionCard title="Stage checklist">
           <ul className="mt-3 space-y-2">
             {checklist.map((item) => (
               <li
@@ -855,10 +1008,10 @@ export function CaptureStageBody({
               All sections complete — ready to submit.
             </p>
           )}
-        </div>
-        <Button asChild variant="outline" className="w-full">
-          <Link href={AppRoutes.desk}>Return to desk</Link>
-        </Button>
+        </SectionCard>
+        <ProtoBtn ghost className="mt-4 w-full" onClick={() => router.push(AppRoutes.desk)}>
+          Return to desk
+        </ProtoBtn>
       </div>
     );
   }

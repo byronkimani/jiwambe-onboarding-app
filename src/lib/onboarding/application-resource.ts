@@ -255,6 +255,11 @@ export type CustomerLookupMatch = {
   displayName: string;
   phoneMasked: string;
   nationalIdMasked?: string | null;
+  /** Officer-only unmasked fields for lookup portal card */
+  phone?: string | null;
+  nationalId?: string | null;
+  portalStartedLabel?: string | null;
+  county?: string | null;
 };
 
 export type CustomerLookupResponse = {
