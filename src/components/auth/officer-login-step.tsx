@@ -2,16 +2,21 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  ProtoBtn,
+  ProtoField,
+  ProtoInput,
+} from "@/components/onboarding/atoms/proto-field";
 import { AppRoutes } from "@/lib/global/shared/routes";
 import {
   emailFormatErrorMessage,
   isValidEmailFormat,
   normalizeEmail,
 } from "@/lib/global/auth/normalize-email";
-import { PASSWORD_MIN_LENGTH } from "@/lib/global/auth/validate-password";
+import {
+  PASSWORD_MIN_LENGTH,
+  passwordLengthErrorMessage,
+} from "@/lib/global/auth/validate-password";
 
 type Props = {
   onSuccess: (
@@ -28,9 +33,13 @@ export function OfficerLoginStep({ onSuccess }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [emailShowValidation, setEmailShowValidation] = useState(false);
+  const [passwordShowValidation, setPasswordShowValidation] = useState(false);
 
   const emailInlineError = emailShowValidation
     ? emailFormatErrorMessage(email)
+    : null;
+  const passwordInlineError = passwordShowValidation
+    ? passwordLengthErrorMessage(password)
     : null;
   const emailValid = isValidEmailFormat(email);
   const passwordValid = password.length >= PASSWORD_MIN_LENGTH;
@@ -39,6 +48,7 @@ export function OfficerLoginStep({ onSuccess }: Props) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setEmailShowValidation(true);
+    setPasswordShowValidation(true);
     if (!canSubmit || submitting) return;
     setSubmitting(true);
     setError(null);
@@ -96,17 +106,13 @@ export function OfficerLoginStep({ onSuccess }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-      <div>
-        <Label htmlFor="email" className="text-ink-soft">
-          Email
-        </Label>
-        <Input
+    <form onSubmit={handleSubmit} noValidate>
+      <ProtoField label="Email" required id="email">
+        <ProtoInput
           id="email"
           type="email"
           autoComplete="username"
           placeholder="you@example.com"
-          className="mt-2 border-line bg-white"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           onBlur={() => setEmailShowValidation(true)}
@@ -116,49 +122,65 @@ export function OfficerLoginStep({ onSuccess }: Props) {
         {emailInlineError ? (
           <p
             id="login-email-error"
-            className="mt-1.5 text-[12px] font-semibold text-red-600"
+            className="mt-1.5 text-[12px] font-semibold text-red"
             role="alert"
           >
             {emailInlineError}
           </p>
         ) : null}
-      </div>
-      <div>
-        <Label htmlFor="password" className="text-ink-soft">
-          Password
-        </Label>
-        <Input
+      </ProtoField>
+      <ProtoField
+        label="Password"
+        required
+        id="password"
+        hint={
+          <>
+            Minimum {PASSWORD_MIN_LENGTH} characters.{" "}
+            <Link
+              href={AppRoutes.forgotPassword}
+              className="font-semibold text-accent-deep underline-offset-2 hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </>
+        }
+      >
+        <ProtoInput
           id="password"
           type="password"
           autoComplete="current-password"
           placeholder="••••••••"
-          className="mt-2 border-line bg-white"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          onBlur={() => setPasswordShowValidation(true)}
+          aria-invalid={passwordInlineError ? true : undefined}
+          aria-describedby={
+            passwordInlineError ? "login-password-error" : undefined
+          }
         />
-        <p className="mt-1.5 text-[12px] text-ink-soft">
-          Minimum {PASSWORD_MIN_LENGTH} characters.{" "}
-          <Link
-            href={AppRoutes.forgotPassword}
-            className="font-semibold text-accent-deep underline-offset-2 hover:underline"
+        {passwordInlineError ? (
+          <p
+            id="login-password-error"
+            className="mt-1.5 text-[12px] font-semibold text-red"
+            role="alert"
           >
-            Forgot password?
-          </Link>
-        </p>
-      </div>
+            {passwordInlineError}
+          </p>
+        ) : null}
+      </ProtoField>
       {error ? (
-        <p className="text-[13px] font-semibold text-red-600" role="alert">
+        <p className="mb-4 text-[13px] font-semibold text-red" role="alert">
           {error}
         </p>
       ) : null}
-      <Button
+      <ProtoBtn
         type="submit"
-        className="h-auto w-full rounded-xl py-3.5 font-bold"
-        disabled={submitting}
+        className="w-full"
+        disabled={!canSubmit || submitting}
       >
         {submitting ? "Checking…" : "Continue"}
-      </Button>
-      <p className="text-center text-[12px] leading-relaxed text-ink-soft">
+      </ProtoBtn>
+      <p className="mt-3.5 text-center text-xs leading-relaxed text-ink-faint">
         Accounts are created by Jiwambe backoffice — no self sign-up. New agents
         use the activation link from CRM.
       </p>

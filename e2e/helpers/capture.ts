@@ -53,10 +53,10 @@ export async function completeReadiness(page: Page): Promise<void> {
 
 export async function selectPortalCustomer(
   page: Page,
-  name: string,
+  _name: string,
   searchQuery = "0712 334 556",
 ): Promise<void> {
-  await page.getByPlaceholder("Search phone or National ID").fill(searchQuery);
+  await page.getByPlaceholder("07XX XXX XXX or ID number").fill(searchQuery);
   await Promise.all([
     page.waitForResponse(
       (res) =>
@@ -65,29 +65,29 @@ export async function selectPortalCustomer(
         res.ok(),
       { timeout: 30_000 },
     ),
-    page.getByRole("button", { name: /search portal/i }).click(),
+    page.getByRole("button", { name: "Search", exact: true }).click(),
   ]);
-  await page
-    .getByRole("button", { name: new RegExp(name, "i") })
-    .waitFor({ timeout: 15_000 });
-  await page.getByRole("button", { name: new RegExp(name, "i") }).click();
+  await expect(page.getByText("Portal draft")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("0712 334 556")).toBeVisible();
   await Promise.all([
     page.waitForURL(/\/capture\/identity/, { timeout: 30_000 }),
-    clickContinue(page),
+    page.getByRole("button", { name: "Continue with this applicant →" }).click(),
   ]);
 }
 
 export async function completeIdentityStage(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/capture\/identity/);
-  const textboxes = page.getByRole("textbox");
-  await textboxes.nth(0).fill("E2E Test Rider");
-  await textboxes.nth(1).fill("0712334456");
-  await textboxes.nth(2).fill("28459912");
-  await page.locator("select").first().selectOption("male");
+  await page.getByLabel("Full name (as on National ID)").fill("E2E Test Rider");
+  await page.getByRole("button", { name: "Male", exact: true }).click();
   await page.locator('input[type="date"]').fill("1990-05-15");
-  // Index 3 = DOB, 4 = email; county and KRA follow address fields.
-  await textboxes.nth(5).fill("Nairobi");
-  await textboxes.nth(9).fill("A012345678X");
+  await page.getByLabel("Phone number").fill("0712334456");
+  await page.getByLabel("Email address").fill("e2e.test@example.com");
+  await page.locator("#identity-county").selectOption("Nairobi");
+  await page.locator("#identity-subcounty").selectOption("Westlands");
+  await page.locator("#identity-area").fill("Parklands");
+  await page.locator("#identity-landmark").fill("Near Sarit Centre");
+  await page.getByLabel("National ID number").fill("28459912");
+  await page.locator("#identity-kra").fill("A012345678X");
 
   await uploadFileAtIndex(page, 0, {
     name: "id-front.jpg",
@@ -164,13 +164,14 @@ export async function completeCogcStage(page: Page): Promise<void> {
 }
 
 export async function completeReferencesStage(page: Page): Promise<void> {
-  const cards = page.locator("div.rounded-2xl.border.border-line.p-4");
+  const cards = page.locator("div.rounded-2xl.border");
   for (let i = 0; i < 3; i += 1) {
     const card = cards.nth(i);
     await card.getByPlaceholder("Name").fill(`Ref ${i + 1}`);
     await card.locator("input").nth(1).fill(`1234567${i}`);
     await card.locator("select").selectOption("friend");
     await card.getByPlaceholder(/07XX/i).fill(`71200000${i}`);
+    await card.getByText("Called during this session").click();
   }
   await page
     .getByText("Customer consents to reference verification calls")
@@ -183,9 +184,7 @@ export async function completeReferencesStage(page: Page): Promise<void> {
 
 export async function completeModelStage(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/capture\/model/);
-  const fleet = page.getByRole("button", { name: "FLEET" });
-  await fleet.click();
-  await expect(fleet).toHaveClass(/bg-accent/);
+  await page.getByRole("button", { name: "FLEET", exact: true }).click();
   await page.getByRole("button", { name: /active bolt driver/i }).click();
   await Promise.all([
     page.waitForURL(/\/capture\/product/, { timeout: 30_000 }),
@@ -217,23 +216,29 @@ async function confirmDepositWithFallbackUi(page: Page): Promise<void> {
   });
 }
 
-export async function completeProductStageWithStk(page: Page): Promise<void> {
-  await waitForProductCatalog(page);
-  await page.getByRole("button", { name: "Spiro TVS" }).click();
-  await page.waitForResponse(
-    (res) =>
-      res.url().includes("/v1/field/products/quote") &&
-      res.request().method() === "POST" &&
-      res.ok(),
-    { timeout: 30_000 },
-  );
-  await expect(page.getByText(/Financing calculator/i)).toBeVisible({
-    timeout: 15_000,
-  });
-  await expect(page.getByText(/Daily installment:/i)).toBeVisible({
-    timeout: 15_000,
-  });
-
+export async function completeProductStageWithStk(
+  page: Page,
+  options?: { catalogReady?: boolean; productReady?: boolean },
+): Promise<void> {
+  if (!options?.productReady) {
+    if (!options?.catalogReady) {
+      await waitForProductCatalog(page);
+    }
+    await page.getByRole("button", { name: "Spiro TVS" }).click();
+    await page.waitForResponse(
+      (res) =>
+        res.url().includes("/v1/field/products/quote") &&
+        res.request().method() === "POST" &&
+        res.ok(),
+      { timeout: 30_000 },
+    );
+    await expect(page.getByText(/Financing calculator/i)).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByText(/Daily installment:/i)).toBeVisible({
+      timeout: 15_000,
+    });
+  }
   await page.getByRole("button", { name: "Send STK push" }).click();
   try {
     await expect(page.getByText(/M-Pesa deposit verified/i)).toBeVisible({

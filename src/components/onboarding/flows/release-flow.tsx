@@ -6,7 +6,10 @@ import type { OnboardingApplication } from "@/lib/onboarding/types";
 import { LifelineStrip } from "@/components/onboarding/desk/lifeline-strip";
 import { OnboardingTopBar } from "@/components/onboarding/chrome/top-bar";
 import { DocumentSlot } from "@/components/onboarding/atoms/document-slot";
-import { ProtoBtn, ProtoInput } from "@/components/onboarding/atoms/proto-field";
+import { ProtoBtn, ProtoInput, ProtoTextarea } from "@/components/onboarding/atoms/proto-field";
+import { CeremonyFooterActions } from "@/components/onboarding/flows/ceremony-footer-actions";
+import { StickerSmsBtn } from "@/components/onboarding/flows/sticker-sms-btn";
+import { ReasonModal } from "@/components/onboarding/chrome/reason-modal";
 import {
   PDI_ITEMS,
   RELEASE_OTP_DEMO,
@@ -62,6 +65,11 @@ export function ReleaseFlow({
   const [otp, setOtp] = useState("");
   const [released, setReleased] = useState(app.state === "ACTIVE_LOAN");
   const [busy, setBusy] = useState(false);
+  const [defectOpen, setDefectOpen] = useState(false);
+  const [defectDesc, setDefectDesc] = useState("");
+  const [defectPhoto, setDefectPhoto] = useState<string | null>(null);
+  const [pauseModalOpen, setPauseModalOpen] = useState(false);
+  const [disqualifyModalOpen, setDisqualifyModalOpen] = useState(false);
 
   useEffect(() => {
     void apiReleaseSendOtp(applicationRef);
@@ -175,6 +183,11 @@ export function ReleaseFlow({
               {bike.model} · {bike.color}
               {bike.sticker ? ` · sticker ${bike.sticker}` : ""}
             </p>
+            {bike.sticker ? (
+              <div className="mt-3 flex items-center gap-3">
+                <StickerSmsBtn phone={app.phone} />
+              </div>
+            ) : null}
           </div>
 
           <div className="mb-3.5 rounded-2xl border border-line bg-card p-5">
@@ -209,6 +222,46 @@ export function ReleaseFlow({
             >
               Mark all PDI (demo)
             </ProtoBtn>
+            <button
+              type="button"
+              className="jw-tap mt-3 block text-[13px] font-bold text-red"
+              onClick={() => setDefectOpen((open) => !open)}
+            >
+              Something&apos;s wrong with this bike — report a defect
+            </button>
+            {defectOpen ? (
+              <div className="mt-3 rounded-xl border border-line bg-card-deep p-4">
+                <ProtoTextarea
+                  value={defectDesc}
+                  onChange={(e) => setDefectDesc(e.target.value)}
+                  placeholder="Describe the defect (min 6 characters)…"
+                />
+                <DocumentSlot
+                  label="Photo of the defect"
+                  image={defectPhoto}
+                  onCapture={(file) =>
+                    setDefectPhoto(URL.createObjectURL(file))
+                  }
+                  onRetake={() => setDefectPhoto(null)}
+                />
+                <div className="mt-3 flex gap-2">
+                  <ProtoBtn small ghost onClick={() => setDefectOpen(false)}>
+                    Cancel
+                  </ProtoBtn>
+                  <ProtoBtn
+                    small
+                    danger
+                    disabled={defectDesc.trim().length < 6}
+                    onClick={() => {
+                      toast.message("Defect reported — replacement bike requested.");
+                      setDefectOpen(false);
+                    }}
+                  >
+                    Save & request replacement bike
+                  </ProtoBtn>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="mb-3.5 rounded-2xl border border-line bg-card p-5">
@@ -264,14 +317,30 @@ export function ReleaseFlow({
           <ProtoBtn disabled={!canRelease} onClick={() => void confirmRelease()}>
             {busy ? "Releasing…" : "Confirm bike release"}
           </ProtoBtn>
-          <Link
-            href={AppRoutes.desk}
-            className="jw-tap ml-3 inline-block rounded-[11px] border border-line-strong px-4 py-2.5 text-[13.5px] font-bold text-ink"
-          >
-            ← Worklist
-          </Link>
+          <CeremonyFooterActions
+            backHref={AppRoutes.desk}
+            onPause={() => setPauseModalOpen(true)}
+            onDisqualify={() => setDisqualifyModalOpen(true)}
+          />
         </div>
       </div>
+      <ReasonModal
+        open={pauseModalOpen}
+        title="Pause application"
+        hint="Save progress and return to drafts."
+        confirmLabel="Pause"
+        onConfirm={() => setPauseModalOpen(false)}
+        onCancel={() => setPauseModalOpen(false)}
+      />
+      <ReasonModal
+        open={disqualifyModalOpen}
+        title="Disqualify application"
+        hint="This closes the application."
+        confirmLabel="Disqualify"
+        tone="danger"
+        onConfirm={() => setDisqualifyModalOpen(false)}
+        onCancel={() => setDisqualifyModalOpen(false)}
+      />
     </div>
   );
 }

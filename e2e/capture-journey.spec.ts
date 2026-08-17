@@ -63,8 +63,10 @@ test.describe("capture journey", () => {
     await completeReadiness(page);
     const ref = new URL(page.url()).searchParams.get("application");
     expect(ref).toBeTruthy();
-    await page.getByRole("button", { name: "Disqualify" }).click();
-    await page.getByPlaceholder("Reason (required)").fill("E2E disqualify test");
+    await page.getByRole("button", { name: "Disqualify" }).first().click();
+    await page
+      .getByPlaceholder("Reason (required, min 6 chars)…")
+      .fill("E2E disqualify test");
     await page.getByRole("button", { name: "Disqualify" }).last().click();
     await expect(page).toHaveURL(AppRoutes.desk, { timeout: 20_000 });
     await expect(

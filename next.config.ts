@@ -15,6 +15,7 @@ const contentSecurityPolicy = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  devIndicators: process.env.E2E === "1" ? false : undefined,
   experimental: {
     serverActions: {
       bodySizeLimit: "25mb",

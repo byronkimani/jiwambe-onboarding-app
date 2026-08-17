@@ -425,6 +425,10 @@ export function mockCustomerLookup(body: {
         displayName: customer.name,
         phoneMasked: maskPhoneForDisplay(customer.phone),
         nationalIdMasked: maskNationalIdForDisplay(customer.idNo),
+        phone: customer.phone,
+        nationalId: customer.idNo,
+        portalStartedLabel: "3 days ago",
+        county: customer.county,
       });
     }
   }

@@ -112,7 +112,7 @@ export const SAMPLE_APPLICATION_RESOURCE: OnboardingApplicationResource = {
         nationalId: "34567890",
         phone: "+254734567890",
         relationship: "colleague",
-        called: false,
+        called: true,
       },
     ],
     nextOfKin: {

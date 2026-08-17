@@ -1,12 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { performOfficerSignOut } from "@/components/auth/sign-out-button";
+import {
+  ProtoBtn,
+  ProtoField,
+  ProtoInput,
+} from "@/components/onboarding/atoms/proto-field";
 import { bffFetch } from "@/lib/global/client/bff-fetch";
-import { validateNewPassword } from "@/lib/global/auth/validate-password";
+import {
+  PASSWORD_MIN_LENGTH,
+  validateNewPassword,
+} from "@/lib/global/auth/validate-password";
 import { AppRoutes } from "@/lib/global/shared/routes";
 
 export function ChangePasswordForm() {
@@ -15,6 +20,12 @@ export function ChangePasswordForm() {
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const canSubmit =
+    currentPassword.trim().length > 0 &&
+    password.length >= PASSWORD_MIN_LENGTH &&
+    passwordConfirm.length >= PASSWORD_MIN_LENGTH &&
+    !submitting;
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -78,56 +89,48 @@ export function ChangePasswordForm() {
       </p>
 
       <div className="mt-4 space-y-3">
-        <div>
-          <Label htmlFor="current-password" className="text-ink-soft">
-            Current password
-          </Label>
-          <Input
+        <ProtoField label="Current password" id="current-password">
+          <ProtoInput
             id="current-password"
             type="password"
             autoComplete="current-password"
             value={currentPassword}
             onChange={(event) => setCurrentPassword(event.target.value)}
-            className="mt-1.5"
           />
-        </div>
-        <div>
-          <Label htmlFor="new-password" className="text-ink-soft">
-            New password
-          </Label>
-          <Input
+        </ProtoField>
+        <ProtoField
+          label="New password"
+          id="new-password"
+          hint={`Minimum ${PASSWORD_MIN_LENGTH} characters.`}
+        >
+          <ProtoInput
             id="new-password"
             type="password"
             autoComplete="new-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="mt-1.5"
           />
-        </div>
-        <div>
-          <Label htmlFor="confirm-password" className="text-ink-soft">
-            Confirm new password
-          </Label>
-          <Input
+        </ProtoField>
+        <ProtoField label="Confirm new password" id="confirm-password">
+          <ProtoInput
             id="confirm-password"
             type="password"
             autoComplete="new-password"
             value={passwordConfirm}
             onChange={(event) => setPasswordConfirm(event.target.value)}
-            className="mt-1.5"
           />
-        </div>
+        </ProtoField>
       </div>
 
       {formError ? (
-        <p className="mt-3 text-[13px] font-semibold text-red-600" role="alert">
+        <p className="mt-3 text-[13px] font-semibold text-red" role="alert">
           {formError}
         </p>
       ) : null}
 
-      <Button type="submit" className="mt-4 w-full" disabled={submitting}>
+      <ProtoBtn type="submit" className="mt-4 w-full" disabled={!canSubmit}>
         {submitting ? "Saving…" : "Update password"}
-      </Button>
+      </ProtoBtn>
     </form>
   );
 }

@@ -7,9 +7,12 @@ import { ExitCard } from "@/components/onboarding/capture/exit-card";
 import { CaptureInlineError } from "@/components/onboarding/capture/capture-inline-error";
 import { useCaptureWizard } from "@/components/onboarding/capture/capture-wizard-context";
 import {
-  ProtoBtn,
   ProtoField,
+  ProtoSelect,
 } from "@/components/onboarding/atoms/proto-field";
+import { ProtoChoiceRow } from "@/components/onboarding/atoms/proto-choice-row";
+import { ProtoCheckbox } from "@/components/onboarding/atoms/proto-checkbox";
+import { SectionCard } from "@/components/onboarding/atoms/section-card";
 import { ValidatedTextInput } from "@/components/onboarding/atoms/validated-text-input";
 import { KenyaPhoneInput } from "@/components/onboarding/atoms/kenya-phone-input";
 import type { CaptureFormState } from "@/lib/onboarding/capture/types";
@@ -61,41 +64,31 @@ export function ModelStageBody({
   }
 
   return (
-    <div className="mt-4 space-y-4">
-      <div className="grid gap-2 md:grid-cols-2">
-        {["FLEET", "STAGE", "DELIVERY", "PERSONAL"].map((model) => (
-          <ProtoBtn
-            key={model}
-            ghost={form.opModel !== model}
-            className={form.opModel === model ? "bg-accent text-white" : ""}
-            onClick={() => patchForm({ opModel: model })}
-          >
-            {model}
-          </ProtoBtn>
-        ))}
-      </div>
-      <CaptureInlineError show={showValidation} message={fieldErrors.opModel} />
+    <div className="mt-4">
+      <SectionCard title="Operating model">
+        <ProtoChoiceRow
+          value={form.opModel}
+          onChange={(opModel) => patchForm({ opModel })}
+          options={[
+            { value: "FLEET", label: "FLEET" },
+            { value: "STAGE", label: "STAGE" },
+            { value: "DELIVERY", label: "DELIVERY" },
+            { value: "PERSONAL", label: "PERSONAL" },
+          ]}
+        />
+        <CaptureInlineError show={showValidation} message={fieldErrors.opModel} />
+      </SectionCard>
 
       {form.opModel === "FLEET" ? (
-        <div className="space-y-4 rounded-2xl border border-line p-4">
-          <p className="text-sm font-bold text-ink">Bolt driver status</p>
-          <div className="grid grid-cols-2 gap-2">
-            {[
+        <SectionCard title="Fleet · Bolt driver status">
+          <ProtoChoiceRow
+            value={form.boltActive}
+            onChange={(boltActive) => patchForm({ boltActive })}
+            options={[
               { value: "yes", label: "Active Bolt driver" },
               { value: "no", label: "Not active on Bolt" },
-            ].map((opt) => (
-              <ProtoBtn
-                key={opt.value}
-                ghost={form.boltActive !== opt.value}
-                className={
-                  form.boltActive === opt.value ? "bg-accent text-white" : ""
-                }
-                onClick={() => patchForm({ boltActive: opt.value })}
-              >
-                {opt.label}
-              </ProtoBtn>
-            ))}
-          </div>
+            ]}
+          />
           <CaptureInlineError
             show={showValidation}
             message={fieldErrors.boltActive}
@@ -113,11 +106,11 @@ export function ModelStageBody({
               }
             />
           ) : null}
-        </div>
+        </SectionCard>
       ) : null}
 
       {form.opModel === "STAGE" ? (
-        <div className="space-y-4 rounded-2xl border border-line p-4">
+        <SectionCard title="Offline · Stage">
           <ProtoField label="Stage name" required>
             <ValidatedTextInput
               value={form.stageName}
@@ -147,29 +140,28 @@ export function ModelStageBody({
             show={showValidation}
             message={fieldErrors.chairPhone}
           />
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={form.chairCalled}
-              onChange={(e) => patchForm({ chairCalled: e.target.checked })}
-            />
-            I called the chairperson during this session
-          </label>
+          <ProtoCheckbox
+            checked={form.chairCalled}
+            onChange={(chairCalled) => patchForm({ chairCalled })}
+            label="I called the chairperson during this session"
+          />
           <CaptureInlineError
             show={showValidation}
             message={fieldErrors.chairCalled}
           />
           <ProtoField label="Call outcome" required>
-            <select
-              className="jw-focus w-full rounded-[10px] border-[1.5px] border-line bg-card px-3.5 py-3"
+            <ProtoSelect
               value={form.chairOutcome}
-              onChange={(e) => patchForm({ chairOutcome: e.target.value })}
-            >
-              <option value="">Select…</option>
-              <option value="confirmed">Confirmed — customer is a member</option>
-              <option value="unreachable">Unreachable</option>
-              <option value="denied">Denied membership</option>
-            </select>
+              onChange={(chairOutcome) => patchForm({ chairOutcome })}
+              options={[
+                {
+                  value: "confirmed",
+                  label: "Confirmed — customer is a member",
+                },
+                { value: "unreachable", label: "Unreachable" },
+                { value: "denied", label: "Denied membership" },
+              ]}
+            />
           </ProtoField>
           <CaptureInlineError
             show={showValidation}
@@ -202,29 +194,19 @@ export function ModelStageBody({
               }
             />
           ) : null}
-        </div>
+        </SectionCard>
       ) : null}
 
       {form.opModel === "DELIVERY" ? (
-        <div className="space-y-4 rounded-2xl border border-line p-4">
-          <p className="text-sm font-bold text-ink">Delivery platform</p>
-          <div className="grid grid-cols-2 gap-2">
-            {[
+        <SectionCard title="Delivery platform">
+          <ProtoChoiceRow
+            value={form.worksPlatform}
+            onChange={(worksPlatform) => patchForm({ worksPlatform })}
+            options={[
               { value: "yes", label: "Yes — works on a platform" },
               { value: "no", label: "No platform yet" },
-            ].map((opt) => (
-              <ProtoBtn
-                key={opt.value}
-                ghost={form.worksPlatform !== opt.value}
-                className={
-                  form.worksPlatform === opt.value ? "bg-accent text-white" : ""
-                }
-                onClick={() => patchForm({ worksPlatform: opt.value })}
-              >
-                {opt.label}
-              </ProtoBtn>
-            ))}
-          </div>
+            ]}
+          />
           <CaptureInlineError
             show={showValidation}
             message={fieldErrors.worksPlatform}
@@ -264,16 +246,11 @@ export function ModelStageBody({
                   }
                 />
               </ProtoField>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.verifyConsent}
-                  onChange={(e) =>
-                    patchForm({ verifyConsent: e.target.checked })
-                  }
-                />
-                Customer consents to workplace and residence verification.
-              </label>
+              <ProtoCheckbox
+                checked={form.verifyConsent}
+                onChange={(verifyConsent) => patchForm({ verifyConsent })}
+                label="Customer consents to workplace and residence verification."
+              />
               <CaptureInlineError
                 show={showValidation}
                 message={fieldErrors.verifyConsent}
@@ -291,29 +268,19 @@ export function ModelStageBody({
             "business_registration",
             "Business registration certificate or permit",
           )}
-        </div>
+        </SectionCard>
       ) : null}
 
       {form.opModel === "PERSONAL" ? (
-        <div className="space-y-4 rounded-2xl border border-line p-4">
-          <p className="text-sm font-bold text-ink">Work or business</p>
-          <div className="grid grid-cols-2 gap-2">
-            {[
+        <SectionCard title="Personal use · work or business">
+          <ProtoChoiceRow
+            value={form.isEmployed}
+            onChange={(isEmployed) => patchForm({ isEmployed })}
+            options={[
               { value: "yes", label: "Employed / runs a business" },
               { value: "no", label: "Neither" },
-            ].map((opt) => (
-              <ProtoBtn
-                key={opt.value}
-                ghost={form.isEmployed !== opt.value}
-                className={
-                  form.isEmployed === opt.value ? "bg-accent text-white" : ""
-                }
-                onClick={() => patchForm({ isEmployed: opt.value })}
-              >
-                {opt.label}
-              </ProtoBtn>
-            ))}
-          </div>
+            ]}
+          />
           <CaptureInlineError
             show={showValidation}
             message={fieldErrors.isEmployed}
@@ -340,16 +307,11 @@ export function ModelStageBody({
                   }
                 />
               </ProtoField>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.verifyConsent}
-                  onChange={(e) =>
-                    patchForm({ verifyConsent: e.target.checked })
-                  }
-                />
-                Customer consents to workplace and residence verification.
-              </label>
+              <ProtoCheckbox
+                checked={form.verifyConsent}
+                onChange={(verifyConsent) => patchForm({ verifyConsent })}
+                label="Customer consents to workplace and residence verification."
+              />
               <CaptureInlineError
                 show={showValidation}
                 message={fieldErrors.verifyConsent}
@@ -373,23 +335,18 @@ export function ModelStageBody({
                 Customer is not employed — residence verification consent is
                 still required.
               </p>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.verifyConsent}
-                  onChange={(e) =>
-                    patchForm({ verifyConsent: e.target.checked })
-                  }
-                />
-                Customer consents to residence verification.
-              </label>
+              <ProtoCheckbox
+                checked={form.verifyConsent}
+                onChange={(verifyConsent) => patchForm({ verifyConsent })}
+                label="Customer consents to residence verification."
+              />
               <CaptureInlineError
                 show={showValidation}
                 message={fieldErrors.verifyConsent}
               />
             </>
           ) : null}
-        </div>
+        </SectionCard>
       ) : null}
     </div>
   );

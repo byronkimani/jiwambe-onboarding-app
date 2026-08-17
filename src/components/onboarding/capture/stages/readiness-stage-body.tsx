@@ -6,6 +6,7 @@ import type { CaptureFormState } from "@/lib/onboarding/capture/types";
 import { formatKes } from "@/lib/onboarding/display/format-kes";
 import { AppRoutes } from "@/lib/global/shared/routes";
 import { cn } from "@/lib/utils";
+import { ProtoCheckbox } from "@/components/onboarding/atoms/proto-checkbox";
 import { CaptureInlineError } from "@/components/onboarding/capture/capture-inline-error";
 import { isReadinessComplete } from "@/lib/onboarding/capture/readiness";
 import { usePricingRules } from "@/lib/onboarding/use-pricing-rules";
@@ -42,30 +43,14 @@ export function ReadinessStageBody({
 
   return (
     <div className="flex flex-col gap-2.5">
-      {READINESS_ITEMS.map((item) => {
-        const checked = Boolean(r[item.k]);
-        return (
-          <label
-            key={item.k}
-            className={cn(
-              "jw-tap flex cursor-pointer items-start gap-2.5 rounded-xl border-[1.5px] px-3.5 py-3 text-left",
-              checked
-                ? "border-accent bg-accent-soft"
-                : "border-line bg-card-deep",
-            )}
-          >
-            <input
-              type="checkbox"
-              className="mt-0.5 size-[17px] shrink-0 accent-accent"
-              checked={checked}
-              onChange={() => toggle(item.k)}
-            />
-            <span className="text-[13.5px] font-medium leading-snug text-ink">
-              {item.label}
-            </span>
-          </label>
-        );
-      })}
+      {READINESS_ITEMS.map((item) => (
+        <ProtoCheckbox
+          key={item.k}
+          checked={Boolean(r[item.k])}
+          onChange={() => toggle(item.k)}
+          label={item.label}
+        />
+      ))}
 
       <button
         type="button"

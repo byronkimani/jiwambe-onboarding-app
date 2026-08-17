@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AuthStatusLayout } from "@/components/auth/auth-status-layout";
-import { Button } from "@/components/ui/button";
+import { ProtoBtn } from "@/components/onboarding/atoms/proto-field";
 import { ONBOARDING_SUPPORT } from "@/lib/global/auth/support-contact";
 import { AppRoutes } from "@/lib/global/shared/routes";
 
@@ -55,12 +55,9 @@ export function AccountBlockedScreen() {
         </p>
       </div>
 
-      <Button
-        asChild
-        className="mt-6 h-auto w-full rounded-2xl py-4 text-base font-bold"
-      >
-        <Link href={AppRoutes.home}>Back to sign in</Link>
-      </Button>
+      <Link href={AppRoutes.home} className="mt-6 block">
+        <ProtoBtn className="w-full">Back to sign in</ProtoBtn>
+      </Link>
     </AuthStatusLayout>
   );
 }

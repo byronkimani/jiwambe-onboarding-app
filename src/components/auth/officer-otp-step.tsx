@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  ProtoBtn,
+  ProtoField,
+  ProtoInput,
+} from "@/components/onboarding/atoms/proto-field";
 import { AppRoutes } from "@/lib/global/shared/routes";
 
 type Props = {
@@ -72,11 +74,13 @@ export function OfficerOtpStep({
     setResendSeconds(data.resend_available_in_seconds ?? 60);
   }, [otpSessionId, resendSeconds, resending]);
 
+  const codeValid = code.length === 6;
+
   return (
     <div>
       <button
         type="button"
-        className="mb-3 text-[13.5px] font-bold text-accent-deep"
+        className="jw-tap mb-3.5 text-[13.5px] font-bold text-accent-deep"
         onClick={onBack}
       >
         ← Back
@@ -86,22 +90,19 @@ export function OfficerOtpStep({
         We sent a 6-digit code by SMS to the registered phone for this account —{" "}
         <b>{maskedPhone}</b>.
       </p>
-      <div>
-        <Label htmlFor="otp" className="text-ink-soft">
-          Verification code
-        </Label>
-        <Input
+      <ProtoField label="Verification code" id="otp">
+        <ProtoInput
           id="otp"
           inputMode="numeric"
           maxLength={6}
           placeholder="······"
-          className="mt-2 border-line bg-white text-center font-mono text-[22px] font-bold tracking-[0.35em]"
+          className="text-center font-mono text-[22px] font-bold tracking-[0.35em]"
           value={code}
           onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
         />
-      </div>
+      </ProtoField>
       {error ? (
-        <p className="mt-3 text-[13px] font-semibold text-red-600" role="alert">
+        <p className="mt-3 text-[13px] font-semibold text-red" role="alert">
           {error}
         </p>
       ) : null}
@@ -111,22 +112,20 @@ export function OfficerOtpStep({
         </p>
       ) : null}
       {resendError ? (
-        <p className="mt-3 text-[13px] font-semibold text-red-600" role="alert">
+        <p className="mt-3 text-[13px] font-semibold text-red" role="alert">
           {resendError}
         </p>
       ) : null}
-      <Button
-        type="button"
-        className="mt-6 h-auto w-full rounded-xl py-3.5 font-bold"
-        disabled={code.length !== 6 || submitting}
+      <ProtoBtn
+        className="mt-6 w-full"
+        disabled={!codeValid || submitting}
         onClick={() => void onVerify(code)}
       >
         {submitting ? "Verifying…" : "Verify & sign in"}
-      </Button>
-      <Button
-        type="button"
-        variant="outline"
-        className="mt-3 h-auto w-full rounded-xl py-3.5 font-bold"
+      </ProtoBtn>
+      <ProtoBtn
+        ghost
+        className="mt-3 w-full"
         disabled={resendSeconds > 0 || resending}
         onClick={() => void handleResend()}
       >
@@ -135,7 +134,7 @@ export function OfficerOtpStep({
           : resendSeconds > 0
             ? `Resend code in ${resendSeconds}s`
             : "Resend code"}
-      </Button>
+      </ProtoBtn>
     </div>
   );
 }

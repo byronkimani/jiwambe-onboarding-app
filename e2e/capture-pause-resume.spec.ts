@@ -15,7 +15,9 @@ test("pause mid-capture saves to drafts", async ({ page }) => {
   await page.goto(captureStage("readiness"));
   await completeReadiness(page);
   await page.getByRole("button", { name: "Pause" }).click();
-  await page.getByPlaceholder("Reason (required)").fill("E2E pause mid-capture");
+  await page
+    .getByPlaceholder("Reason (required, min 6 chars)…")
+    .fill("E2E pause mid-capture");
   await page.getByRole("button", { name: "Pause" }).last().click();
   await expect(page).toHaveURL(AppRoutes.deskDrafts, { timeout: 20_000 });
 });

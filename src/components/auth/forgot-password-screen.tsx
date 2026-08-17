@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useState } from "react";
 import { AuthScreenLayout } from "@/components/auth/auth-screen-layout";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  ProtoBtn,
+  ProtoField,
+  ProtoInput,
+} from "@/components/onboarding/atoms/proto-field";
 import {
   emailFormatErrorMessage,
   isValidEmailFormat,
@@ -78,47 +80,35 @@ export function ForgotPasswordScreen() {
           {successMessage}
         </p>
       ) : (
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4" noValidate>
-          <div>
-            <Label htmlFor="forgot-email" className="text-ink-soft">
-              Email
-            </Label>
-            <Input
+        <form onSubmit={handleSubmit} className="mt-4" noValidate>
+          <ProtoField label="Email" required id="forgot-email">
+            <ProtoInput
               id="forgot-email"
               type="email"
               autoComplete="username"
               placeholder="you@example.com"
-              className="mt-2 border-line bg-white"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               onBlur={() => setEmailShowValidation(true)}
-              aria-invalid={emailInlineError ? true : undefined}
-              aria-describedby={
-                emailInlineError ? "forgot-email-error" : undefined
-              }
             />
             {emailInlineError ? (
-              <p
-                id="forgot-email-error"
-                className="mt-1.5 text-[12px] font-semibold text-red-600"
-                role="alert"
-              >
+              <p className="mt-1.5 text-[12px] font-semibold text-red" role="alert">
                 {emailInlineError}
               </p>
             ) : null}
-          </div>
+          </ProtoField>
           {error ? (
-            <p className="text-[13px] font-semibold text-red-600" role="alert">
+            <p className="mb-4 text-[13px] font-semibold text-red" role="alert">
               {error}
             </p>
           ) : null}
-          <Button
+          <ProtoBtn
             type="submit"
-            className="h-auto w-full rounded-xl py-3.5 font-bold"
-            disabled={submitting}
+            className="w-full"
+            disabled={!emailValid || submitting}
           >
             {submitting ? "Sending…" : "Send reset link"}
-          </Button>
+          </ProtoBtn>
         </form>
       )}
 

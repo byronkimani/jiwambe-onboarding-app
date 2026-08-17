@@ -17,3 +17,10 @@ export function validateNewPassword(
 }
 
 export const PASSWORD_MIN_LENGTH = MIN_PASSWORD_LENGTH;
+
+export function passwordLengthErrorMessage(
+  password: string,
+): string | null {
+  if (password.length >= MIN_PASSWORD_LENGTH) return null;
+  return `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+}

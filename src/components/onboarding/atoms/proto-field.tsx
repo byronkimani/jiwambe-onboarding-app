@@ -4,9 +4,10 @@ import { cn } from "@/lib/utils";
 
 type ProtoFieldProps = {
   label: string;
-  hint?: string;
+  hint?: React.ReactNode;
   required?: boolean;
   className?: string;
+  id?: string;
   children: React.ReactNode;
 };
 
@@ -15,14 +16,18 @@ export function ProtoField({
   hint,
   required,
   className,
+  id,
   children,
 }: ProtoFieldProps) {
   return (
     <div className={cn("mb-4", className)}>
-      <div className="mb-1.5 text-[11.5px] font-bold uppercase tracking-wide text-ink-soft">
+      <label
+        htmlFor={id}
+        className="mb-1.5 block text-[11.5px] font-bold uppercase tracking-wide text-ink-soft"
+      >
         {label}
         {required ? <span className="text-red"> *</span> : null}
-      </div>
+      </label>
       {children}
       {hint ? (
         <p className="mt-1 text-xs text-ink-faint">{hint}</p>
@@ -48,11 +53,13 @@ export function ProtoInput(
 type ProtoBtnProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   ghost?: boolean;
   small?: boolean;
+  danger?: boolean;
 };
 
 export function ProtoBtn({
   ghost,
   small,
+  danger,
   className,
   children,
   ...props
@@ -63,9 +70,11 @@ export function ProtoBtn({
       className={cn(
         "jw-tap rounded-[11px] font-bold",
         small ? "px-4 py-2.5 text-[13.5px]" : "px-5 py-3.5 text-[15px]",
-        ghost
-          ? "border-[1.5px] border-line-strong bg-transparent text-ink"
-          : "bg-accent text-white disabled:bg-slate-bg disabled:text-ink-faint",
+        danger
+          ? "bg-red text-white disabled:bg-slate-bg disabled:text-ink-faint"
+          : ghost
+            ? "border-[1.5px] border-line-strong bg-transparent text-ink"
+            : "bg-accent text-white disabled:bg-slate-bg disabled:text-ink-faint",
         className,
       )}
       {...props}
@@ -75,17 +84,55 @@ export function ProtoBtn({
   );
 }
 
-export function ExitCard({
-  title,
-  body,
-}: {
-  title: string;
-  body: string;
-}) {
+type SelectOption = { value: string; label: string };
+
+type ProtoSelectProps = {
+  value: string;
+  onChange: (value: string) => void;
+  options: SelectOption[];
+  placeholder?: string;
+  className?: string;
+  id?: string;
+};
+
+export function ProtoSelect({
+  value,
+  onChange,
+  options,
+  placeholder = "Select…",
+  className,
+  id,
+}: ProtoSelectProps) {
   return (
-    <div className="mt-4 rounded-2xl border border-red/30 bg-red-bg p-4">
-      <p className="font-bold text-red">{title}</p>
-      <p className="mt-2 text-sm leading-relaxed text-ink-soft">{body}</p>
-    </div>
+    <select
+      id={id}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={cn(
+        "jw-tap jw-focus w-full cursor-pointer appearance-none rounded-[10px] border-[1.5px] border-line bg-card px-3.5 py-3 text-[15px] text-ink outline-none",
+        className,
+      )}
+    >
+      <option value="">{placeholder}</option>
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+export function ProtoTextarea(
+  props: React.TextareaHTMLAttributes<HTMLTextAreaElement>,
+) {
+  return (
+    <textarea
+      {...props}
+      className={cn(
+        "jw-tap jw-focus min-h-[84px] w-full resize-y rounded-[10px] border-[1.5px] border-line bg-card px-3.5 py-3 text-[15px] text-ink outline-none",
+        props.className,
+      )}
+    />
   );
 }

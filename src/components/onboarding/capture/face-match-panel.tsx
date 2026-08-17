@@ -1,5 +1,7 @@
 "use client";
 
+/* Face match demo UI disabled — restore when liveness/face match is wired to a real service.
+
 import { useState } from "react";
 
 export function FaceMatchPanel() {
@@ -37,4 +39,9 @@ export function FaceMatchPanel() {
       ) : null}
     </div>
   );
+}
+*/
+
+export function FaceMatchPanel() {
+  return null;
 }

@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import type { OnboardingApplication } from "@/lib/onboarding/types";
 import { formatKes } from "@/lib/onboarding/display/format-kes";
 import { LifelineStrip } from "@/components/onboarding/desk/lifeline-strip";
 import { OnboardingTopBar } from "@/components/onboarding/chrome/top-bar";
 import { AgreementViewer } from "@/components/onboarding/flows/agreement-viewer";
+import { CeremonyFooterActions } from "@/components/onboarding/flows/ceremony-footer-actions";
+import { SignaturePad } from "@/components/onboarding/atoms/signature-pad";
+import { ReasonModal } from "@/components/onboarding/chrome/reason-modal";
 import { ProtoBtn } from "@/components/onboarding/atoms/proto-field";
 import { AppRoutes } from "@/lib/global/shared/routes";
 import { apiAgreementAction } from "@/lib/onboarding/ceremony/ceremony-api";
@@ -37,6 +39,9 @@ export function AgreementFlow({
   const [officerSigned, setOfficerSigned] = useState(false);
   const [smsOpened, setSmsOpened] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [clientSignature, setClientSignature] = useState<string | null>(null);
+  const [pauseModalOpen, setPauseModalOpen] = useState(false);
+  const [disqualifyModalOpen, setDisqualifyModalOpen] = useState(false);
 
   const generatedOn = ["generated", "signed", "sending", "sent"].includes(step);
   const signedOn = ["signed", "sending", "sent"].includes(step);
@@ -197,10 +202,10 @@ export function AgreementFlow({
               <div className="mt-3.5 grid grid-cols-2 gap-3">
                 {(
                   [
-                    ["Client — borrower", clientSigned, app.name],
-                    ["Officer — company rep", officerSigned, app.officer],
+                    ["Client — borrower", clientSigned, app.name, "client"],
+                    ["Officer — company rep", officerSigned, app.officer, "officer"],
                   ] as const
-                ).map(([role, signed, who]) => (
+                ).map(([role, signed, who, kind]) => (
                   <div
                     key={role}
                     className={`rounded-xl border-[1.5px] p-3 ${signed ? "border-accent bg-accent-soft" : "border-line bg-card-deep"}`}
@@ -210,28 +215,41 @@ export function AgreementFlow({
                     >
                       {role}
                     </p>
-                    <div className="mt-2 flex h-16 items-center justify-center rounded-lg border border-line bg-white text-xs text-ink-faint">
-                      {signed ? `Signed · ${who}` : "Awaiting signature"}
-                    </div>
-                    <ProtoBtn
-                      small
-                      className="mt-2 w-full"
-                      disabled={
-                        busy ||
-                        !readDone ||
-                        (role.startsWith("Officer") && !clientSigned) ||
-                        (role.startsWith("Client") && clientSigned)
-                      }
-                      onClick={() => {
-                        if (role.startsWith("Client")) {
-                          setClientSigned(true);
-                        } else {
-                          void captureOfficerSignature();
-                        }
-                      }}
-                    >
-                      {signed ? "✓ Captured" : "Capture signature (demo)"}
-                    </ProtoBtn>
+                    {signed && clientSignature && kind === "client" ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={clientSignature}
+                        alt={`${who} signature`}
+                        className="mt-2 h-16 w-full rounded-lg border border-line bg-white object-contain"
+                      />
+                    ) : signed && kind === "officer" ? (
+                      <div className="mt-2 flex h-16 items-center justify-center rounded-lg border border-line bg-white text-xs text-ink-faint">
+                        Signed · {who}
+                      </div>
+                    ) : !signed && kind === "client" && readDone ? (
+                      <div className="mt-2">
+                        <SignaturePad
+                          onDone={(dataUrl) => {
+                            setClientSignature(dataUrl);
+                            setClientSigned(true);
+                          }}
+                        />
+                      </div>
+                    ) : !signed && kind === "officer" && clientSigned ? (
+                      <div className="mt-2">
+                        <SignaturePad
+                          onDone={() => void captureOfficerSignature()}
+                        />
+                      </div>
+                    ) : (
+                      <div className="mt-2 flex h-16 items-center justify-center rounded-lg border border-line bg-white text-xs text-ink-faint">
+                        {kind === "officer" && !clientSigned
+                          ? "Awaiting client signature"
+                          : !readDone
+                            ? "Read agreement first"
+                            : "Awaiting signature"}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -263,14 +281,30 @@ export function AgreementFlow({
             </FlowPanel>
           ) : null}
 
-          <Link
-            href={AppRoutes.desk}
-            className="jw-tap mt-4 inline-block rounded-[11px] border-[1.5px] border-line-strong px-5 py-3.5 text-[15px] font-bold text-ink"
-          >
-            ← Worklist
-          </Link>
+          <CeremonyFooterActions
+            backHref={AppRoutes.desk}
+            onPause={() => setPauseModalOpen(true)}
+            onDisqualify={() => setDisqualifyModalOpen(true)}
+          />
         </div>
       </div>
+      <ReasonModal
+        open={pauseModalOpen}
+        title="Pause application"
+        hint="Save progress and return to drafts."
+        confirmLabel="Pause"
+        onConfirm={() => setPauseModalOpen(false)}
+        onCancel={() => setPauseModalOpen(false)}
+      />
+      <ReasonModal
+        open={disqualifyModalOpen}
+        title="Disqualify application"
+        hint="This closes the application."
+        confirmLabel="Disqualify"
+        tone="danger"
+        onConfirm={() => setDisqualifyModalOpen(false)}
+        onCancel={() => setDisqualifyModalOpen(false)}
+      />
     </div>
   );
 }

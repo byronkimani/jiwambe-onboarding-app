@@ -1,45 +1,37 @@
 "use client";
 
 import Link from "next/link";
-import { JiwambeOnboardingLogomark } from "@/components/branding/jiwambe-onboarding-logomark";
-import { Button } from "@/components/ui/button";
+import { AuthScreenLayout } from "@/components/auth/auth-screen-layout";
+import { ProtoBtn } from "@/components/onboarding/atoms/proto-field";
 import { AppRoutes } from "@/lib/global/shared/routes";
 
 export default function OfflinePage() {
   return (
-    <main className="flex min-h-dvh flex-col bg-background">
-      <div className="bg-accent-deep px-6 py-5 text-center">
-        <JiwambeOnboardingLogomark size={36} className="mx-auto text-white" />
-      </div>
-      <div className="flex flex-1 flex-col items-center justify-center px-6 pb-10 text-center">
-        <div className="card-shadow w-full max-w-sm rounded-[20px] bg-card px-5 py-8">
-          <div
-            className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-accent-soft"
-            aria-hidden
-          >
-            <span className="text-2xl">📡</span>
-          </div>
-          <h1 className="mt-4 text-xl font-bold text-ink">No connection</h1>
-          <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-            This app needs an internet connection. Check Wi‑Fi or mobile data,
-            then try again. Your work is not saved while offline.
-          </p>
-          <Button
-            className="mt-6 w-full"
-            onClick={() => window.location.reload()}
-          >
-            Try again
-          </Button>
-          <p className="mt-4">
-            <Link
-              href={AppRoutes.home}
-              className="text-sm font-semibold text-accent-deep hover:text-accent"
-            >
-              Back to login
-            </Link>
-          </p>
+    <AuthScreenLayout>
+      <div className="text-center">
+        <div
+          className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-accent-soft text-2xl"
+          aria-hidden
+        >
+          📡
         </div>
+        <h1 className="mt-4 font-display text-[22px] text-ink">No connection</h1>
+        <p className="mt-2 text-[13.5px] leading-relaxed text-ink-soft">
+          This app needs an internet connection. Check Wi‑Fi or mobile data, then
+          try again. Your work is not saved while offline.
+        </p>
+        <ProtoBtn className="mt-6 w-full" onClick={() => window.location.reload()}>
+          Try again
+        </ProtoBtn>
+        <p className="mt-4 text-[13px]">
+          <Link
+            href={AppRoutes.home}
+            className="font-semibold text-accent-deep underline-offset-2 hover:underline"
+          >
+            Back to login
+          </Link>
+        </p>
       </div>
-    </main>
+    </AuthScreenLayout>
   );
 }
